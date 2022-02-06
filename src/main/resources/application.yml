@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:tcp://localhost/~/gudiantales;AUTO_SERVER=true
+    username: kang
+    password: kange88
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+
+  logging:
+    level:
+      org.hibernate.SQL: debug
+      org.hibernate.type: trace
+
+
+server:
+  port: 7070
