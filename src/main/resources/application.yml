@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:h2:tcp://localhost/~/gudiantales;AUTO_SERVER=true
-    username: kang
-    password: kange88
+    username: nashaz
+    password: nashaz
     driver-class-name: org.h2.Driver
 
   jpa:

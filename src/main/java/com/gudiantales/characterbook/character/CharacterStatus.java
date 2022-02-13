@@ -1,6 +1,7 @@
 package com.gudiantales.characterbook.character;
 
 import com.gudiantales.characterbook.common.CommonEntity;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,6 +14,8 @@ public class CharacterStatus extends CommonEntity {
     private Long id;
 
     private String name;
+
+    private String weapon;
 
     @Enumerated(EnumType.STRING)
     private PropertyType propertyType;
