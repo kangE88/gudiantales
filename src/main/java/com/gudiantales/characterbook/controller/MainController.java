@@ -25,12 +25,14 @@ public class MainController {
         cs.setPropertyType(PropertyType.DARK);
 
         cs.setName("티니아");
+        cs.setName("티니아2");
         cs.setPropertyType(PropertyType.EARTH);
         cs.setWeapon("사릉가");
-        //EntityManagerFactory emf = new
+//        EntityManagerFactory emf = new
 
         characterService.saveCharacter(cs); // 저장
 
         return "123Hello world!!!!!";
+
     }
 }
