@@ -12,27 +12,34 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.persistence.EntityManagerFactory;
 
-@RestController
+@Controller
 @Slf4j
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 public class MainController {
-    private final CharacterService characterService;
+//    private final CharacterService characterService;
+//
+//    @GetMapping("/home")
+//    public String home(){
+//        log.info("main controller");
+//        CharacterStatus cs = new CharacterStatus();
+//        cs.setPropertyType(PropertyType.DARK);
+//
+//        cs.setName("티니아");
+//        cs.setName("티니아2");
+//        cs.setPropertyType(PropertyType.EARTH);
+//        cs.setWeapon("사릉가");
+////        EntityManagerFactory emf = new
+//
+//        characterService.saveCharacter(cs); // 저장
+//
+//        return "123Hello world!!!!!";
+//
+//    }
 
-    @GetMapping("/home")
-    public String home(){
-        log.info("main controller");
-        CharacterStatus cs = new CharacterStatus();
-        cs.setPropertyType(PropertyType.DARK);
-
-        cs.setName("티니아");
-        cs.setName("티니아2");
-        cs.setPropertyType(PropertyType.EARTH);
-        cs.setWeapon("사릉가");
-//        EntityManagerFactory emf = new
-
-        characterService.saveCharacter(cs); // 저장
-
-        return "123Hello world!!!!!";
-
+    @GetMapping("/addCharacter")
+    public String addCharacter(){
+        return "main";
     }
+
+
 }
