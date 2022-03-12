@@ -17,6 +17,8 @@ public class CharacterStatus extends CommonEntity {
 
     private String weapon;
 
+    private String nn;
+
     @Enumerated(EnumType.STRING)
     private PropertyType propertyType;
 
