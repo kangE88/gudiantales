@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/header :: header">
+    <title>Title</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+</head>
+<body>
+<main>
+    <div class="container">
+        <tr th:each="characters: ${characters}">
+            <td th:text="${characters.id}" />
+            <td th:text="${characters.name}" />
+        </tr>
+    </div>
+</main>
+</body>
+</html>
