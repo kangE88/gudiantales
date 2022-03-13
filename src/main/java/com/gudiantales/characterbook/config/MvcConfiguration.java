@@ -13,7 +13,8 @@ public class MvcConfiguration implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/templates/", "classpath:/static/")
+                .addResourceLocations("classpath:/templates/")
+                .addResourceLocations("classpath:/static/img/")
                 .setCacheControl(CacheControl.maxAge(10, TimeUnit.MINUTES));
     }
 }

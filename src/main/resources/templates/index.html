@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/header :: header">
+    <title>Title</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+</head>
+<body>
+<main>
+<div class="container">
+    <!-- Content here -->
+    <div class="container-fluid">
+        <img th:src="@{/main_bg.gif}" class="img-fluid" alt="etc">
+        <div>
+            Hello, GudianTails
+        </div>
+        <a href="/" class="btn btn-dark">Character Select</a>
+        <a href="/addCharacter" class="btn btn-dark">Character Add</a>
+    </div>
+</div>
+</main>
+</body>
+</html>
