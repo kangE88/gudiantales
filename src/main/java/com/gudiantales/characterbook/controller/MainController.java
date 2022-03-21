@@ -39,7 +39,7 @@ public class MainController {
 
     @GetMapping("/addCharacter")
     public String addCharacter(){
-        return "main";
+        return "character/addCharacter";
     }
 
     @GetMapping("/selectCharacter")
