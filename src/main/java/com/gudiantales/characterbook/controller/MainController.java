@@ -25,8 +25,6 @@ public class MainController {
     public String index(){
         log.info("main controller");
         CharacterStatus cs = new CharacterStatus();
-        cs.setPropertyType(PropertyType.DARK);
-
         cs.setName("티니아");
         cs.setPropertyType(PropertyType.EARTH);
         cs.setWeapon("사릉가");
