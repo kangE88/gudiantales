@@ -1,7 +1,9 @@
 package com.gudiantales.characterbook.example;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -51,6 +53,7 @@ public class GreetringMain {
 //        });
         Arrays.sort(names, String::compareToIgnoreCase);
         System.out.println("-->"+Arrays.toString(names));
+
 
 
     }
