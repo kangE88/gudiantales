@@ -30,7 +30,7 @@ public class forEachMain {
 
         Spliterator<String> spliterator = name.spliterator(); // iterator랑 비슷하고, 전체 목록이 출력된다.
         Spliterator<String> stringSpliterator = spliterator.trySplit(); //반으로 쪼갬
-        spliterator.trySplit();
+        //spliterator.trySplit();
         while (spliterator.tryAdvance(System.out::println));
         while (stringSpliterator.tryAdvance(System.out::println));
 
