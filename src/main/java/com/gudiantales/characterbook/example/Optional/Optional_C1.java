@@ -1,9 +1,9 @@
 package com.gudiantales.characterbook.example.Optional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.OptionalInt;
+import com.gudiantales.characterbook.example.stream.OnlineClass;
+
+import java.util.*;
+import java.util.stream.Stream;
 
 public class Optional_C1 {
 
@@ -29,7 +29,35 @@ public class Optional_C1 {
 
         System.out.println(progress); //Optional.empty
 
+        Optional<OptionalClass> optionalClassStream = springClasses.stream()
+                .filter(oc -> oc.getTitle().startsWith("spring"))
+                .findFirst();
 
+        //
 
+        OptionalClass optionalClass = optionalClassStream.get();
+        System.out.println("optionalClass = " + optionalClass.getTitle());
+
+        //위와 같이 get을 사용하지않고 사용할수있는 옵션들
+
+        optionalClassStream.ifPresent(oc -> System.out.println("optionalClassStream ifPresent ::" + oc.getTitle()));
+
+        OptionalClass optionalClass1 = optionalClassStream.orElse(createNewClass()); //무조건 실행됨
+        OptionalClass optionalClass2 = optionalClassStream.orElseGet(() -> createNewClass()); //optionalClassStream 에 조건에 값이 있으면 실행안함
+        optionalClass2 = optionalClassStream.orElseGet(Optional_C1::createNewClass); //위와 같음
+
+        OptionalClass optionalClass3 = optionalClassStream.orElseThrow(); // 값이 없으면 에러던져줌
+        System.out.println("optionalClass3 = " + optionalClass3.getTitle());
+
+        optionalClassStream.orElseThrow(() -> {
+            return new IllegalArgumentException();
+        });
+
+        optionalClassStream.orElseThrow(IllegalStateException::new);
+    }
+
+    private static OptionalClass createNewClass() {
+        System.out.println("Optional_C1.createNewClass");
+        return new OptionalClass(10, "New Class", false );
     }
 }
