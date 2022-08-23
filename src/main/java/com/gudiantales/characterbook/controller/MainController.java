@@ -2,6 +2,7 @@ package com.gudiantales.characterbook.controller;
 
 import com.gudiantales.characterbook.character.CharacterStatus;
 import com.gudiantales.characterbook.character.PropertyType;
+import com.gudiantales.characterbook.example.Lambda;
 import com.gudiantales.characterbook.service.CharacterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,19 @@ public class MainController {
     @GetMapping("/")
     public String index(){
         log.info("main controller");
+//        CharacterStatus cs = new CharacterStatus();
+//        cs.setName("티니아");
+//        cs.setPropertyType(PropertyType.EARTH);
+//        cs.setWeapon("사릉가");
+//
+//        characterService.saveCharacter(cs); // 저장
+
+        return "index";
+
+    }
+
+/*    @GetMapping("/addCharacter")
+    public String addCharacter(){
         CharacterStatus cs = new CharacterStatus();
         cs.setName("티니아");
         cs.setPropertyType(PropertyType.EARTH);
@@ -31,18 +45,13 @@ public class MainController {
 
         characterService.saveCharacter(cs); // 저장
 
-        return "index";
-
-    }
-
-    @GetMapping("/addCharacter")
-    public String addCharacter(){
         return "character/addCharacter";
-    }
+    }*/
 
     @GetMapping("/selectCharacter")
     public String selectCharacter(Model model) {
         List<CharacterStatus> characters = characterService.findCharacters();
+
         model.addAttribute("characters", characters);
         log.debug("characters::", characters);
         return "character/characterList";
