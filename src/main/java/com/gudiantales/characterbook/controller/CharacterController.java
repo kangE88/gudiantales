@@ -1,7 +1,6 @@
 package com.gudiantales.characterbook.controller;
 
 import com.gudiantales.characterbook.character.CharacterStatus;
-import com.gudiantales.characterbook.character.PropertyType;
 import com.gudiantales.characterbook.service.CharacterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,14 +11,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
 @Slf4j
-@RequiredArgsConstructor
 public class CharacterController {
     private CharacterService characterService;
+
+    public CharacterController(CharacterService characterService) {
+        this.characterService = characterService;
+    }
 
     @GetMapping("/character/addCharacter")
     public String addCharacter(Model model) {
         log.info("Character controller");
-        model.addAttribute("form", new CharacterStatus());
+        model.addAttribute("characterStatus", new CharacterStatus());
         return "character/addCharacter";
     }
     @PostMapping("/character/addCharacter")
@@ -28,10 +30,7 @@ public class CharacterController {
         CharacterStatus characterStatus = new CharacterStatus();
         characterStatus.setName(form.getName());
         characterStatus.setWeapon(form.getWeapon());
-//        characterStatus.setPropertyType(form.getPropertyType());
-
-        log.info(form.getName());
-        log.info(form.getWeapon());
+        characterStatus.setPropertyType(form.getPropertyType());
 
         characterService.saveCharacter(characterStatus);
 

@@ -10,7 +10,8 @@
     <div class="container">
         <tr th:each="characters: ${characters}">
             <td th:text="${characters.id}" />
-            <td th:text="${characters.name}" /><br>
+            <td th:text="${characters.name}" />
+            <td th:text="${characters.propertyType}" /><br>
         </tr>
     </div>
 </main>

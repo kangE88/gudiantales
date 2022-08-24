@@ -18,9 +18,12 @@ import java.util.List;
 
 @Controller
 @Slf4j
-@RequiredArgsConstructor
 public class MainController {
+
     private final CharacterService characterService;
+    public MainController(CharacterService characterService) {
+        this.characterService = characterService;
+    }
 
     @GetMapping("/")
     public String index(){
@@ -51,11 +54,8 @@ public class MainController {
     @GetMapping("/selectCharacter")
     public String selectCharacter(Model model) {
         List<CharacterStatus> characters = characterService.findCharacters();
-
+        log.info("characters.size ::", characters.size());
         model.addAttribute("characters", characters);
-        log.debug("characters::", characters);
         return "character/characterList";
     }
-
-
 }
