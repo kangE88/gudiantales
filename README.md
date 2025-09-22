@@ -14,7 +14,27 @@
       @slideChange="onSlideChange"
       @progress="onProgress"
     >
-      <slot />
+      <!-- 데이터 기반 슬라이드 렌더링 (slides prop 사용 시) -->
+      <template v-if="props.slides && props.slides.length > 0">
+        <swiper-slide 
+          v-for="(slide, index) in props.slides" 
+          :key="slide.id || index"
+        >
+          <slot name="slide" :item="slide" :index="index">
+            <!-- 기본 슬라이드 템플릿 -->
+            <div class="sc-swiper-slide-default">
+              <h3 v-if="slide.title">{{ slide.title }}</h3>
+              <p v-if="slide.description">{{ slide.description }}</p>
+              <img v-if="slide.image" :src="slide.image" :alt="slide.title || `Slide ${index + 1}`" />
+            </div>
+          </slot>
+        </swiper-slide>
+      </template>
+      
+      <!-- 템플릿 기반 슬라이드 (SwiperSlide 직접 사용 시) -->
+      <template v-else>
+        <slot />
+      </template>
     </swiper>
     
     <!-- Pagination -->
@@ -51,13 +71,14 @@ import {
   ref, 
   computed, 
   onMounted, 
+  onUnmounted,
   onErrorCaptured, 
   shallowRef, 
   watchEffect,
   nextTick,
   markRaw
 } from 'vue';
-import { Swiper } from 'swiper/vue';
+import { Swiper, SwiperSlide } from 'swiper/vue';
 
 // ============================================================================
 // TYPES
@@ -111,6 +132,10 @@ export interface AutoplayConfig {
 }
 
 export interface SCSwiperProps {
+  // 데이터 기반 props (ScSwiper용)
+  slides?: any[];
+  
+  // 공통 Swiper 설정
   pagination?: boolean | PaginationType | PaginationConfig;
   paginationType?: PaginationType;
   navigation?: boolean | NavigationConfig;
@@ -137,6 +162,16 @@ export interface SCSwiperProps {
 let idCounter = 0;
 const generateUniqueId = (prefix = 'swiper'): string => {
   return `${prefix}-${++idCounter}-${Date.now()}`;
+};
+
+// 공통 모듈 설정 팩토리 함수
+const createModuleConfig = <T>(
+  config: boolean | T,
+  baseConfig: T
+): T | false => {
+  if (config === false) return false;
+  if (config === true) return baseConfig;
+  return { ...baseConfig, ...config };
 };
 
 const createPaginationConfig = (
@@ -178,51 +213,47 @@ const createNavigationConfig = (
   navigation: boolean | NavigationConfig,
   uniqueId: string
 ): NavigationConfig | false => {
-  if (navigation === false) return false;
-  
   const baseConfig: NavigationConfig = {
     nextEl: `.swiper-button-next-${uniqueId}`,
     prevEl: `.swiper-button-prev-${uniqueId}`
   };
   
-  if (navigation === true) {
-    return baseConfig;
-  }
-  
-  return { ...baseConfig, ...navigation };
+  return createModuleConfig(navigation, baseConfig);
 };
 
 const createScrollbarConfig = (
   scrollbar: boolean | ScrollbarConfig,
   uniqueId: string
 ): ScrollbarConfig | false => {
-  if (scrollbar === false) return false;
-  
   const baseConfig: ScrollbarConfig = {
     el: `.swiper-scrollbar-${uniqueId}`,
     draggable: true
   };
   
-  if (scrollbar === true) {
-    return baseConfig;
-  }
-  
-  return { ...baseConfig, ...scrollbar };
+  return createModuleConfig(scrollbar, baseConfig);
 };
 
-const validateSwiperProps = (props: any): void => {
+const validateSwiperProps = (props: SCSwiperProps): void => {
+  // 기본 검증 (항상 실행)
+  if (typeof props.slidesPerView === 'number' && props.slidesPerView <= 0) {
+    throw new Error('[SCSwiper] slidesPerView must be positive number');
+  }
+  
+  if (typeof props.speed === 'number' && props.speed < 0) {
+    throw new Error('[SCSwiper] speed must be non-negative');
+  }
+  
+  if (typeof props.spaceBetween === 'number' && props.spaceBetween < 0) {
+    throw new Error('[SCSwiper] spaceBetween must be non-negative');
+  }
+  
+  // 디버그 모드 추가 검증
   if (props.debug) {
-    if (typeof props.slidesPerView === 'number' && props.slidesPerView <= 0) {
-      console.warn('[SCSwiper] slidesPerView must be positive number');
-    }
-    
-    if (typeof props.speed === 'number' && props.speed < 0) {
-      console.warn('[SCSwiper] speed must be non-negative');
-    }
-    
-    if (props.spaceBetween < 0) {
-      console.warn('[SCSwiper] spaceBetween must be non-negative');
-    }
+    console.log('[SCSwiper] Props validation passed:', {
+      slidesPerView: props.slidesPerView,
+      speed: props.speed,
+      spaceBetween: props.spaceBetween
+    });
   }
 };
 
@@ -291,6 +322,7 @@ const getRequiredModules = async (props: any) => {
 interface Props extends SCSwiperProps {}
 
 const props = withDefaults(defineProps<Props>(), {
+  slides: () => [],
   pagination: true,
   paginationType: undefined,
   navigation: false,
@@ -313,7 +345,11 @@ const emit = defineEmits<{
   progress: [{ progress: number }];
   init: [any];
   error: [Error];
-}>();
+  beforeSlideChange: [{ from: number, to: number }];
+  afterSlideChange: [{ activeIndex: number }];
+  reachEnd: [];
+  reachBeginning: [];
+}>(); 
 
 // 반응형 참조
 const swiperRef = shallowRef<any>(null);
@@ -408,14 +444,26 @@ const onSwiperInit = (swiper: any) => {
 };
 
 const onSlideChange = (swiper: any) => {
+  const previousIndex = currentSlideIndex.value;
   currentSlideIndex.value = swiper.activeIndex;
   isAtStart.value = swiper.isBeginning;
   isAtEnd.value = swiper.isEnd;
   
+  // 이벤트 발생
   emit('slideChange', {
     activeIndex: swiper.activeIndex,
     realIndex: swiper.realIndex
   });
+  
+  emit('afterSlideChange', { activeIndex: swiper.activeIndex });
+  
+  // 시작/끝 도달 이벤트
+  if (swiper.isBeginning) {
+    emit('reachBeginning');
+  }
+  if (swiper.isEnd) {
+    emit('reachEnd');
+  }
 };
 
 const onProgress = (swiper: any, progress: number) => {
@@ -444,6 +492,20 @@ onMounted(async () => {
   } catch (error) {
     console.error(`[SCSwiper ${uniqueSwiperId.value}] Mount error:`, error);
     emit('error', error as Error);
+  }
+});
+
+// 메모리 누수 방지
+onUnmounted(() => {
+  if (swiperInstance.value) {
+    try {
+      swiperInstance.value.destroy(true, true);
+      if (props.debug) {
+        console.log(`[SCSwiper ${uniqueSwiperId.value}] Destroyed`);
+      }
+    } catch (error) {
+      console.error(`[SCSwiper ${uniqueSwiperId.value}] Destroy error:`, error);
+    }
   }
 });
 
@@ -489,6 +551,34 @@ defineExpose({
   white-space: nowrap;
   border: 0;
 }
+
+/* 기본 슬라이드 스타일 */
+.sc-swiper-slide-default {
+  padding: 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.sc-swiper-slide-default h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.sc-swiper-slide-default p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.sc-swiper-slide-default img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
 </style>
 
 <!--
@@ -496,21 +586,36 @@ defineExpose({
 사용법 예시:
 ===========================================
 
-<template>
-  <!-- 기본 사용법 -->
+예시 템플릿:
+  <!-- 데이터 기반 사용법 (추천) -->
+  <SCSwiper 
+    :slides="slides" 
+    pagination="bullets" 
+    :navigation="true"
+  >
+    <template #slide="{ item, index }">
+      <div class="custom-slide">
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.description }}</p>
+      </div>
+    </template>
+  </SCSwiper>
+
+  <!-- 기본 슬라이드 템플릿 사용 (slides만 제공) -->
+  <SCSwiper :slides="slides" pagination="bullets" :navigation="true" />
+
+  <!-- 템플릿 기반 사용법 (SwiperSlide 직접 사용) -->
   <SCSwiper pagination="bullets" :navigation="true">
     <SwiperSlide>Slide 1</SwiperSlide>
     <SwiperSlide>Slide 2</SwiperSlide>
   </SCSwiper>
 
   <!-- 타입 분리 -->
-  <SCSwiper :pagination="true" pagination-type="fraction">
-    <SwiperSlide>Slide 1</SwiperSlide>
-    <SwiperSlide>Slide 2</SwiperSlide>
-  </SCSwiper>
+  <SCSwiper :slides="slides" :pagination="true" pagination-type="fraction" />
 
   <!-- 상세 설정 -->
   <SCSwiper 
+    :slides="slides"
     :pagination="{ 
       type: 'bullets', 
       clickable: true,
@@ -520,15 +625,24 @@ defineExpose({
     :autoplay="{ delay: 3000 }"
     :loop="true"
   >
-    <SwiperSlide>Slide 1</SwiperSlide>
-    <SwiperSlide>Slide 2</SwiperSlide>
+    <template #slide="{ item, index }">
+      <div class="premium-slide">
+        <h2>{{ item.title }}</h2>
+        <p>{{ item.description }}</p>
+        <img v-if="item.image" :src="item.image" :alt="item.title" />
+      </div>
+    </template>
   </SCSwiper>
-</template>
 
 <script setup>
 import { SwiperSlide } from 'swiper/vue';
 import SCSwiper from '@/components/SCSwiper.vue';
-</script>
+
+const slides = [
+  { id: 1, title: "슬라이드 1", description: "첫 번째 슬라이드" },
+  { id: 2, title: "슬라이드 2", description: "두 번째 슬라이드" },
+  { id: 3, title: "슬라이드 3", description: "세 번째 슬라이드" },
+];
 
 ===========================================
 필요한 CSS Import (main.ts 또는 App.vue):
