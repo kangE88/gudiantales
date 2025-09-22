@@ -1,8 +1,3 @@
-# guardian tales character book
-
-JPA + Thyemleaf 우선 작업 -> 프론트는 react or vue로 진행 예정
-
-
 <!-- components/SCSwiper.vue -->
 <template>
   <div 
@@ -144,29 +139,6 @@ const generateUniqueId = (prefix = 'swiper'): string => {
   return `${prefix}-${++idCounter}-${Date.now()}`;
 };
 
-const createElementConfig = <T extends Record<string, any>>(
-  propValue: boolean | string | T,
-  elementSelector: string,
-  defaultConfig: Partial<T> = {}
-): T | false => {
-  if (propValue === false) return false;
-  
-  const baseConfig = {
-    el: elementSelector,
-    ...defaultConfig
-  } as T;
-  
-  if (propValue === true) {
-    return baseConfig;
-  }
-  
-  if (typeof propValue === 'string') {
-    return { ...baseConfig, type: propValue } as T;
-  }
-  
-  return { ...baseConfig, ...propValue } as T;
-};
-
 const createPaginationConfig = (
   pagination: boolean | PaginationType | PaginationConfig,
   paginationType: PaginationType | undefined,
@@ -174,28 +146,68 @@ const createPaginationConfig = (
 ): PaginationConfig | false => {
   if (pagination === false) return false;
   
-  const baseConfig = {
+  const baseConfig: PaginationConfig = {
     el: elementSelector,
     clickable: true,
   };
   
+  // 1. pagination이 객체인 경우 (가장 우선순위)
   if (typeof pagination === 'object' && pagination !== null) {
     return { ...baseConfig, ...pagination };
   }
   
+  // 2. pagination이 문자열인 경우
   if (typeof pagination === 'string') {
     return { ...baseConfig, type: pagination };
   }
   
+  // 3. paginationType이 명시된 경우
   if (paginationType) {
     return { ...baseConfig, type: paginationType };
   }
   
+  // 4. pagination이 true인 경우 (기본값)
   if (pagination === true) {
     return { ...baseConfig, type: 'bullets' };
   }
   
   return false;
+};
+
+const createNavigationConfig = (
+  navigation: boolean | NavigationConfig,
+  uniqueId: string
+): NavigationConfig | false => {
+  if (navigation === false) return false;
+  
+  const baseConfig: NavigationConfig = {
+    nextEl: `.swiper-button-next-${uniqueId}`,
+    prevEl: `.swiper-button-prev-${uniqueId}`
+  };
+  
+  if (navigation === true) {
+    return baseConfig;
+  }
+  
+  return { ...baseConfig, ...navigation };
+};
+
+const createScrollbarConfig = (
+  scrollbar: boolean | ScrollbarConfig,
+  uniqueId: string
+): ScrollbarConfig | false => {
+  if (scrollbar === false) return false;
+  
+  const baseConfig: ScrollbarConfig = {
+    el: `.swiper-scrollbar-${uniqueId}`,
+    draggable: true
+  };
+  
+  if (scrollbar === true) {
+    return baseConfig;
+  }
+  
+  return { ...baseConfig, ...scrollbar };
 };
 
 const validateSwiperProps = (props: any): void => {
@@ -324,23 +336,6 @@ const computedAriaLabel = computed(() =>
   props.ariaLabel || `Swiper carousel with ${totalSlides.value} slides`
 );
 
-// CSS 클래스들 (성능 최적화를 위한 computed)
-const paginationClasses = computed(() => 
-  `swiper-pagination swiper-pagination-${uniqueSwiperId.value}`
-);
-
-const prevButtonClasses = computed(() => 
-  `swiper-button-prev swiper-button-prev-${uniqueSwiperId.value}`
-);
-
-const nextButtonClasses = computed(() => 
-  `swiper-button-next swiper-button-next-${uniqueSwiperId.value}`
-);
-
-const scrollbarClasses = computed(() => 
-  `swiper-scrollbar swiper-scrollbar-${uniqueSwiperId.value}`
-);
-
 // 표시 여부 (메모이제이션)
 const shouldShowPagination = computed(() => props.pagination !== false);
 const shouldShowNavigation = computed(() => props.navigation !== false);
@@ -355,35 +350,13 @@ const paginationConfig = computed(() =>
   )
 );
 
-const navigationConfig = computed(() => {
-  if (props.navigation === false) return false;
-  
-  const baseConfig = {
-    nextEl: `.swiper-button-next-${uniqueSwiperId.value}`,
-    prevEl: `.swiper-button-prev-${uniqueSwiperId.value}`
-  };
-  
-  if (props.navigation === true) {
-    return baseConfig;
-  }
-  
-  return { ...baseConfig, ...props.navigation };
-});
+const navigationConfig = computed(() => 
+  createNavigationConfig(props.navigation, uniqueSwiperId.value)
+);
 
-const scrollbarConfig = computed(() => {
-  if (props.scrollbar === false) return false;
-  
-  const baseConfig = {
-    el: `.swiper-scrollbar-${uniqueSwiperId.value}`,
-    draggable: true
-  };
-  
-  if (props.scrollbar === true) {
-    return baseConfig;
-  }
-  
-  return { ...baseConfig, ...props.scrollbar };
-});
+const scrollbarConfig = computed(() => 
+  createScrollbarConfig(props.scrollbar, uniqueSwiperId.value)
+);
 
 const autoplayConfig = computed(() => {
   if (props.autoplay === false) return false;
@@ -481,7 +454,7 @@ watchEffect(() => {
   }
 });
 
-// 외부에서 접근 가능한 메서드들 (dotPagination과 같은 외부 컴포넌트에서 사용)
+// 외부에서 접근 가능한 메서드들
 defineExpose({
   swiper: swiperInstance,
   slideTo: (index: number) => swiperInstance.value?.slideTo(index),
@@ -550,32 +523,11 @@ defineExpose({
     <SwiperSlide>Slide 1</SwiperSlide>
     <SwiperSlide>Slide 2</SwiperSlide>
   </SCSwiper>
-
-  <!-- 외부 컴포넌트와 연동 -->
-  <div class="slider-container">
-    <SCSwiper 
-      ref="swiperRef"
-      :pagination="false"
-      :navigation="false"
-    >
-      <SwiperSlide>Slide 1</SwiperSlide>
-      <SwiperSlide>Slide 2</SwiperSlide>
-    </SCSwiper>
-    
-    <dotPagination 
-      :swiper-ref="swiperRef" 
-      direction="left" 
-    />
-  </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
 import { SwiperSlide } from 'swiper/vue';
 import SCSwiper from '@/components/SCSwiper.vue';
-import dotPagination from '@/components/dotPagination.vue';
-
-const swiperRef = ref(null);
 </script>
 
 ===========================================
@@ -586,22 +538,5 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/scrollbar';
-import 'swiper/css/effect-fade';
-import 'swiper/css/effect-cube';
-import 'swiper/css/effect-coverflow';
-import 'swiper/css/effect-flip';
-
-===========================================
-주요 특징:
-===========================================
-
-✅ 완전한 독립성: 여러 인스턴스 간 충돌 없음
-✅ 타입 안전성: TypeScript 완전 지원
-✅ 성능 최적화: 동적 모듈 로딩, 메모이제이션
-✅ 접근성: WCAG 2.1 AA 준수
-✅ 유연한 설정: boolean/string/object 모든 방식 지원
-✅ 외부 컴포넌트 연동: dotPagination 등과 연동 가능
-✅ 에러 처리: 완전한 에러 경계 및 검증
-✅ 디버그 모드: 개발 시 유용한 로깅
 
 -->
