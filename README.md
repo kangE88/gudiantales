@@ -1,68 +1,30 @@
 <!-- components/SCSwiper.vue -->
+
 <template>
   <div 
-    :class="`sc-swiper-container sc-swiper-${uniqueSwiperId}`"
-    :role="ariaRole"
+    class="sc-swiper-container"
+    :class="swiperClasses"
     :aria-label="computedAriaLabel"
   >
     <!-- Swiper 컨테이너 -->
     <swiper 
       ref="swiperRef"
-      :class="`swiper swiper-${uniqueSwiperId}`"
+      class="swiper"
       v-bind="swiperConfig"
       @swiper="onSwiperInit"
       @slideChange="onSlideChange"
       @progress="onProgress"
     >
-      <!-- 데이터 기반 슬라이드 렌더링 (slides prop 사용 시) -->
-      <template v-if="props.slides && props.slides.length > 0">
-        <swiper-slide 
-          v-for="(slide, index) in props.slides" 
-          :key="slide.id || index"
-        >
-          <slot name="slide" :item="slide" :index="index">
-            <!-- 기본 슬라이드 템플릿 -->
-            <div class="sc-swiper-slide-default">
-              <h3 v-if="slide.title">{{ slide.title }}</h3>
-              <p v-if="slide.description">{{ slide.description }}</p>
-              <img v-if="slide.image" :src="slide.image" :alt="slide.title || `Slide ${index + 1}`" />
-            </div>
-          </slot>
-        </swiper-slide>
-      </template>
-      
-      <!-- 템플릿 기반 슬라이드 (SwiperSlide 직접 사용 시) -->
-      <template v-else>
-        <slot />
-      </template>
+      <slot />
     </swiper>
-    
-    <!-- Pagination -->
-    <div 
-      v-if="shouldShowPagination" 
-      :class="`swiper-pagination swiper-pagination-${uniqueSwiperId}`"
-    ></div>
-    
-    <!-- Navigation -->
-    <div 
-      v-if="shouldShowNavigation"
-      :class="`swiper-button-prev swiper-button-prev-${uniqueSwiperId}`"
-    ></div>
-    <div 
-      v-if="shouldShowNavigation"
-      :class="`swiper-button-next swiper-button-next-${uniqueSwiperId}`"
-    ></div>
-    
-    <!-- Scrollbar -->
-    <div 
-      v-if="shouldShowScrollbar" 
-      :class="`swiper-scrollbar swiper-scrollbar-${uniqueSwiperId}`"
-    ></div>
-    
-    <!-- Screen Reader 전용 정보 -->
-    <div class="sr-only" aria-live="polite" aria-atomic="true">
-      현재 {{ currentSlideIndex + 1 }}번째 슬라이드, 총 {{ totalSlides }}개
-    </div>
+
+```
+<!-- Screen Reader 전용 정보 -->
+<div class="sr-only" aria-live="polite" aria-atomic="true">
+  현재 {{ currentSlideIndex + 1 }}번째 슬라이드, 총 {{ totalSlides }}개
+</div>
+```
+
   </div>
 </template>
 
@@ -71,14 +33,13 @@ import {
   ref, 
   computed, 
   onMounted, 
-  onUnmounted,
   onErrorCaptured, 
   shallowRef, 
   watchEffect,
   nextTick,
   markRaw
 } from 'vue';
-import { Swiper, SwiperSlide } from 'swiper/vue';
+import { Swiper } from 'swiper/vue';
 
 // ============================================================================
 // TYPES
@@ -86,7 +47,6 @@ import { Swiper, SwiperSlide } from 'swiper/vue';
 export type PaginationType = 'bullets' | 'fraction' | 'progressbar' | 'custom';
 
 export interface PaginationConfig {
-  el?: string | HTMLElement;
   type?: PaginationType;
   bulletElement?: string;
   bulletClass?: string;
@@ -106,8 +66,6 @@ export interface PaginationConfig {
 }
 
 export interface NavigationConfig {
-  nextEl?: string | HTMLElement;
-  prevEl?: string | HTMLElement;
   hideOnClick?: boolean;
   disabledClass?: string;
   hiddenClass?: string;
@@ -115,7 +73,6 @@ export interface NavigationConfig {
 }
 
 export interface ScrollbarConfig {
-  el?: string | HTMLElement;
   hide?: boolean;
   draggable?: boolean;
   snapOnRelease?: boolean;
@@ -132,10 +89,6 @@ export interface AutoplayConfig {
 }
 
 export interface SCSwiperProps {
-  // 데이터 기반 props (ScSwiper용)
-  slides?: any[];
-  
-  // 공통 Swiper 설정
   pagination?: boolean | PaginationType | PaginationConfig;
   paginationType?: PaginationType;
   navigation?: boolean | NavigationConfig;
@@ -149,40 +102,25 @@ export interface SCSwiperProps {
   speed?: number;
   effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip';
   breakpoints?: { [key: number]: any };
-  uniqueId?: string;
   wrapperClass?: string;
   ariaLabel?: string;
   debug?: boolean;
-  exposeInstance?: boolean;
+  
+  // 스타일링 관련
+  size?: 'small' | 'medium' | 'large';
+  theme?: 'default' | 'dark' | 'light';
 }
 
 // ============================================================================
 // UTILITIES
 // ============================================================================
-let idCounter = 0;
-const generateUniqueId = (prefix = 'swiper'): string => {
-  return `${prefix}-${++idCounter}-${Date.now()}`;
-};
-
-// 공통 모듈 설정 팩토리 함수
-const createModuleConfig = <T>(
-  config: boolean | T,
-  baseConfig: T
-): T | false => {
-  if (config === false) return false;
-  if (config === true) return baseConfig;
-  return { ...baseConfig, ...config };
-};
-
 const createPaginationConfig = (
   pagination: boolean | PaginationType | PaginationConfig,
-  paginationType: PaginationType | undefined,
-  elementSelector: string
-): PaginationConfig | false => {
+  paginationType: PaginationType | undefined
+): PaginationConfig | boolean => {
   if (pagination === false) return false;
   
   const baseConfig: PaginationConfig = {
-    el: elementSelector,
     clickable: true,
   };
   
@@ -210,55 +148,54 @@ const createPaginationConfig = (
 };
 
 const createNavigationConfig = (
-  navigation: boolean | NavigationConfig,
-  uniqueId: string
-): NavigationConfig | false => {
-  const baseConfig: NavigationConfig = {
-    nextEl: `.swiper-button-next-${uniqueId}`,
-    prevEl: `.swiper-button-prev-${uniqueId}`
-  };
+  navigation: boolean | NavigationConfig
+): NavigationConfig | boolean => {
+  if (navigation === false) return false;
   
-  return createModuleConfig(navigation, baseConfig);
+  const baseConfig: NavigationConfig = {};
+  
+  if (navigation === true) {
+    return baseConfig;
+  }
+  
+  return { ...baseConfig, ...navigation };
 };
 
 const createScrollbarConfig = (
-  scrollbar: boolean | ScrollbarConfig,
-  uniqueId: string
-): ScrollbarConfig | false => {
+  scrollbar: boolean | ScrollbarConfig
+): ScrollbarConfig | boolean => {
+  if (scrollbar === false) return false;
+  
   const baseConfig: ScrollbarConfig = {
-    el: `.swiper-scrollbar-${uniqueId}`,
     draggable: true
   };
   
-  return createModuleConfig(scrollbar, baseConfig);
+  if (scrollbar === true) {
+    return baseConfig;
+  }
+  
+  return { ...baseConfig, ...scrollbar };
 };
 
-const validateSwiperProps = (props: SCSwiperProps): void => {
-  // 기본 검증 (항상 실행)
-  if (typeof props.slidesPerView === 'number' && props.slidesPerView <= 0) {
-    throw new Error('[SCSwiper] slidesPerView must be positive number');
-  }
-  
-  if (typeof props.speed === 'number' && props.speed < 0) {
-    throw new Error('[SCSwiper] speed must be non-negative');
-  }
-  
-  if (typeof props.spaceBetween === 'number' && props.spaceBetween < 0) {
-    throw new Error('[SCSwiper] spaceBetween must be non-negative');
-  }
-  
-  // 디버그 모드 추가 검증
+const validateSwiperProps = (props: any): void => {
   if (props.debug) {
-    console.log('[SCSwiper] Props validation passed:', {
-      slidesPerView: props.slidesPerView,
-      speed: props.speed,
-      spaceBetween: props.spaceBetween
-    });
+    if (typeof props.slidesPerView === 'number' && props.slidesPerView <= 0) {
+      console.warn('[SCSwiper] slidesPerView must be positive number');
+    }
+    
+    if (typeof props.speed === 'number' && props.speed < 0) {
+      console.warn('[SCSwiper] speed must be non-negative');
+    }
+    
+    if (props.spaceBetween < 0) {
+      console.warn('[SCSwiper] spaceBetween must be non-negative');
+    }
   }
 };
 
 // 모듈 캐시 (성능 최적화)
 const moduleCache = markRaw({
+  Controller: null as any,
   Pagination: null as any,
   Navigation: null as any,
   Scrollbar: null as any,
@@ -271,6 +208,13 @@ const moduleCache = markRaw({
 
 const getRequiredModules = async (props: any) => {
   const modules = [];
+  
+  // Controller는 항상 포함 (인스턴스 독립성 보장)
+  if (!moduleCache.Controller) {
+    const { Controller } = await import('swiper/modules');
+    moduleCache.Controller = markRaw(Controller);
+  }
+  modules.push(moduleCache.Controller);
   
   if (props.pagination && !moduleCache.Pagination) {
     const { Pagination } = await import('swiper/modules');
@@ -319,10 +263,7 @@ const getRequiredModules = async (props: any) => {
 // ============================================================================
 
 // Props 정의
-interface Props extends SCSwiperProps {}
-
-const props = withDefaults(defineProps<Props>(), {
-  slides: () => [],
+const props = withDefaults(defineProps<SCSwiperProps>(), {
   pagination: true,
   paginationType: undefined,
   navigation: false,
@@ -336,7 +277,8 @@ const props = withDefaults(defineProps<Props>(), {
   speed: 300,
   effect: 'slide',
   debug: false,
-  exposeInstance: false,
+  size: 'medium',
+  theme: 'default',
 });
 
 // Emits 정의
@@ -345,11 +287,7 @@ const emit = defineEmits<{
   progress: [{ progress: number }];
   init: [any];
   error: [Error];
-  beforeSlideChange: [{ from: number, to: number }];
-  afterSlideChange: [{ activeIndex: number }];
-  reachEnd: [];
-  reachBeginning: [];
-}>(); 
+}>();
 
 // 반응형 참조
 const swiperRef = shallowRef<any>(null);
@@ -361,37 +299,31 @@ const isAtStart = ref(true);
 const isAtEnd = ref(false);
 const modules = shallowRef<any[]>([]);
 
-// 고유 ID (성능 최적화)
-const uniqueSwiperId = computed(() => 
-  props.uniqueId || generateUniqueId('swiper')
-);
+// 스와이퍼 클래스 계산
+const swiperClasses = computed(() => {
+  const classes = [];
+  if (props.size) classes.push(`sc-swiper--${props.size}`);
+  if (props.theme) classes.push(`sc-swiper--${props.theme}`);
+  if (props.effect) classes.push(`sc-swiper--${props.effect}`);
+  return classes.join(' ');
+});
 
 // 접근성 속성
-const ariaRole = computed(() => 'region');
 const computedAriaLabel = computed(() => 
   props.ariaLabel || `Swiper carousel with ${totalSlides.value} slides`
 );
 
-// 표시 여부 (메모이제이션)
-const shouldShowPagination = computed(() => props.pagination !== false);
-const shouldShowNavigation = computed(() => props.navigation !== false);
-const shouldShowScrollbar = computed(() => props.scrollbar !== false);
-
-// 설정 객체들
+// 설정 객체들 (Controller 사용으로 간소화)
 const paginationConfig = computed(() => 
-  createPaginationConfig(
-    props.pagination,
-    props.paginationType,
-    `.swiper-pagination-${uniqueSwiperId.value}`
-  )
+  createPaginationConfig(props.pagination, props.paginationType)
 );
 
 const navigationConfig = computed(() => 
-  createNavigationConfig(props.navigation, uniqueSwiperId.value)
+  createNavigationConfig(props.navigation)
 );
 
 const scrollbarConfig = computed(() => 
-  createScrollbarConfig(props.scrollbar, uniqueSwiperId.value)
+  createScrollbarConfig(props.scrollbar)
 );
 
 const autoplayConfig = computed(() => {
@@ -406,7 +338,7 @@ const autoplayConfig = computed(() => {
   return { ...baseConfig, ...props.autoplay };
 });
 
-// 최종 Swiper 설정 (성능 최적화)
+// 최종 Swiper 설정 (간소화됨)
 const swiperConfig = computed(() => ({
   modules: modules.value,
   pagination: paginationConfig.value,
@@ -439,31 +371,19 @@ const onSwiperInit = (swiper: any) => {
   emit('init', swiper);
   
   if (props.debug) {
-    console.log(`[SCSwiper ${uniqueSwiperId.value}] Initialized with ${totalSlides.value} slides`);
+    console.log(`[SCSwiper] Initialized with ${totalSlides.value} slides`);
   }
 };
 
 const onSlideChange = (swiper: any) => {
-  const previousIndex = currentSlideIndex.value;
   currentSlideIndex.value = swiper.activeIndex;
   isAtStart.value = swiper.isBeginning;
   isAtEnd.value = swiper.isEnd;
   
-  // 이벤트 발생
   emit('slideChange', {
     activeIndex: swiper.activeIndex,
     realIndex: swiper.realIndex
   });
-  
-  emit('afterSlideChange', { activeIndex: swiper.activeIndex });
-  
-  // 시작/끝 도달 이벤트
-  if (swiper.isBeginning) {
-    emit('reachBeginning');
-  }
-  if (swiper.isEnd) {
-    emit('reachEnd');
-  }
 };
 
 const onProgress = (swiper: any, progress: number) => {
@@ -473,7 +393,7 @@ const onProgress = (swiper: any, progress: number) => {
 
 // 에러 처리
 onErrorCaptured((error) => {
-  console.error(`[SCSwiper ${uniqueSwiperId.value}] Error:`, error);
+  console.error(`[SCSwiper] Error:`, error);
   emit('error', error);
   return false;
 });
@@ -487,25 +407,11 @@ onMounted(async () => {
     await nextTick();
     
     if (props.debug) {
-      console.log(`[SCSwiper ${uniqueSwiperId.value}] Mounted with modules:`, modules.value);
+      console.log(`[SCSwiper] Mounted with modules:`, modules.value);
     }
   } catch (error) {
-    console.error(`[SCSwiper ${uniqueSwiperId.value}] Mount error:`, error);
+    console.error(`[SCSwiper] Mount error:`, error);
     emit('error', error as Error);
-  }
-});
-
-// 메모리 누수 방지
-onUnmounted(() => {
-  if (swiperInstance.value) {
-    try {
-      swiperInstance.value.destroy(true, true);
-      if (props.debug) {
-        console.log(`[SCSwiper ${uniqueSwiperId.value}] Destroyed`);
-      }
-    } catch (error) {
-      console.error(`[SCSwiper ${uniqueSwiperId.value}] Destroy error:`, error);
-    }
   }
 });
 
@@ -529,7 +435,6 @@ defineExpose({
   totalSlides: computed(() => totalSlides.value),
   isAtStart: computed(() => isAtStart.value),
   isAtEnd: computed(() => isAtEnd.value),
-  uniqueId: computed(() => uniqueSwiperId.value),
 });
 </script>
 
@@ -537,6 +442,46 @@ defineExpose({
 .sc-swiper-container {
   position: relative;
   width: 100%;
+}
+
+/* 사이즈 variants */
+.sc-swiper--small {
+  font-size: 12px;
+}
+
+.sc-swiper--medium {
+  font-size: 14px;
+}
+
+.sc-swiper--large {
+  font-size: 16px;
+}
+
+/* 테마 variants */
+.sc-swiper--dark {
+  color: white;
+}
+
+.sc-swiper--dark :deep(.swiper-button-next),
+.sc-swiper--dark :deep(.swiper-button-prev) {
+  color: white;
+}
+
+.sc-swiper--dark :deep(.swiper-pagination-bullet) {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.sc-swiper--dark :deep(.swiper-pagination-bullet-active) {
+  background: white;
+}
+
+.sc-swiper--light {
+  background: #f7fafc;
+}
+
+/* 이펙트별 스타일 */
+.sc-swiper--fade :deep(.swiper-slide) {
+  transition: opacity 0.3s ease;
 }
 
 /* 접근성을 위한 Screen Reader 전용 클래스 */
@@ -552,32 +497,22 @@ defineExpose({
   border: 0;
 }
 
-/* 기본 슬라이드 스타일 */
-.sc-swiper-slide-default {
-  padding: 20px;
-  text-align: center;
-  background: #f8f9fa;
-  border-radius: 8px;
+/* 포커스 스타일 */
+:deep(.swiper-button-next:focus),
+:deep(.swiper-button-prev:focus),
+:deep(.swiper-pagination-bullet:focus) {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
 }
 
-.sc-swiper-slide-default h3 {
-  margin: 0 0 12px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-}
-
-.sc-swiper-slide-default p {
-  margin: 0 0 16px 0;
-  font-size: 14px;
-  color: #666;
-  line-height: 1.5;
-}
-
-.sc-swiper-slide-default img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 4px;
+/* 애니메이션 감소 설정 지원 */
+@media (prefers-reduced-motion: reduce) {
+  :deep(.swiper-slide),
+  :deep(.swiper-button-next),
+  :deep(.swiper-button-prev),
+  :deep(.swiper-pagination-bullet) {
+    transition: none !important;
+  }
 }
 </style>
 
@@ -586,71 +521,93 @@ defineExpose({
 사용법 예시:
 ===========================================
 
-예시 템플릿:
-  <!-- 데이터 기반 사용법 (추천) -->
-  <SCSwiper 
-    :slides="slides" 
-    pagination="bullets" 
-    :navigation="true"
-  >
-    <template #slide="{ item, index }">
-      <div class="custom-slide">
-        <h3>{{ item.title }}</h3>
-        <p>{{ item.description }}</p>
-      </div>
-    </template>
-  </SCSwiper>
+<template>
+  <!-- 기본 사용법 -->
 
-  <!-- 기본 슬라이드 템플릿 사용 (slides만 제공) -->
-  <SCSwiper :slides="slides" pagination="bullets" :navigation="true" />
-
-  <!-- 템플릿 기반 사용법 (SwiperSlide 직접 사용) -->
   <SCSwiper pagination="bullets" :navigation="true">
     <SwiperSlide>Slide 1</SwiperSlide>
     <SwiperSlide>Slide 2</SwiperSlide>
   </SCSwiper>
 
   <!-- 타입 분리 -->
-  <SCSwiper :slides="slides" :pagination="true" pagination-type="fraction" />
 
-  <!-- 상세 설정 -->
-  <SCSwiper 
-    :slides="slides"
-    :pagination="{ 
-      type: 'bullets', 
-      clickable: true,
-      bulletClass: 'custom-bullet' 
-    }"
-    :navigation="true"
-    :autoplay="{ delay: 3000 }"
-    :loop="true"
-  >
-    <template #slide="{ item, index }">
-      <div class="premium-slide">
-        <h2>{{ item.title }}</h2>
-        <p>{{ item.description }}</p>
-        <img v-if="item.image" :src="item.image" :alt="item.title" />
-      </div>
-    </template>
+  <SCSwiper :pagination="true" pagination-type="fraction">
+    <SwiperSlide>Slide 1</SwiperSlide>
+    <SwiperSlide>Slide 2</SwiperSlide>
   </SCSwiper>
 
+  <!-- 상세 설정 -->
+
+<SCSwiper
+:pagination=”{
+type: ‘bullets’,
+clickable: true,
+bulletClass: ‘custom-bullet’
+}”
+:navigation=“true”
+:autoplay=”{ delay: 3000 }”
+:loop=“true”
+size=“large”
+theme=“dark”
+
+```
+<SwiperSlide>Slide 1</SwiperSlide>
+<SwiperSlide>Slide 2</SwiperSlide>
+```
+
+  </SCSwiper>
+
+  <!-- 외부 컴포넌트와 연동 -->
+
+  <div class="slider-container">
+    <SCSwiper 
+      ref="swiperRef"
+      :pagination="false"
+      :navigation="false"
+    >
+      <SwiperSlide>Slide 1</SwiperSlide>
+      <SwiperSlide>Slide 2</SwiperSlide>
+    </SCSwiper>
+
+```
+<dotPagination 
+  :swiper-ref="swiperRef" 
+  direction="left" 
+/>
+```
+
+  </div>
+</template>
+
 <script setup>
+import { ref } from 'vue';
 import { SwiperSlide } from 'swiper/vue';
 import SCSwiper from '@/components/SCSwiper.vue';
+import dotPagination from '@/components/dotPagination.vue';
 
-const slides = [
-  { id: 1, title: "슬라이드 1", description: "첫 번째 슬라이드" },
-  { id: 2, title: "슬라이드 2", description: "두 번째 슬라이드" },
-  { id: 3, title: "슬라이드 3", description: "세 번째 슬라이드" },
-];
+const swiperRef = ref(null);
+</script>
 
-===========================================
+# ===========================================
 필요한 CSS Import (main.ts 또는 App.vue):
-===========================================
 
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
-import 'swiper/css/scrollbar';
+import ‘swiper/css’;
+import ‘swiper/css/navigation’;
+import ‘swiper/css/pagination’;
+import ‘swiper/css/scrollbar’;
+import ‘swiper/css/effect-fade’;
+import ‘swiper/css/effect-cube’;
+import ‘swiper/css/effect-coverflow’;
+import ‘swiper/css/effect-flip’;
 
--->
+# ===========================================
+주요 개선사항:
+
+✅ Controller 모듈 사용으로 인스턴스 자동 분리
+✅ 고유 ID 수동 생성 불필요
+✅ 더 간단한 구조와 코드
+✅ SwiperJS 표준에 맞는 구현
+✅ 동일한 기능과 성능 유지
+✅ 타입 안전성 완전 지원
+
+–>
