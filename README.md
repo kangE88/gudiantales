@@ -1603,7 +1603,7 @@
   </style>
 
 
-  --------
+ <!-- SCSwiper.vue 공통컴포넌트를 사용하는 탬플릿 example -->
 
   <script setup lang="ts">
 import { ref } from 'vue'
