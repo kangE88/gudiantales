@@ -2,6 +2,7 @@
 <template>
     <div 
       :class="`sc-swiper-container sc-swiper-${swiperId}`"
+      :data-effect="props.effect"
       :role="ariaRole"
       :aria-label="computedAriaLabel"
     >
@@ -9,10 +10,31 @@
       <swiper 
         ref="swiperRef"
         :class="`swiper swiper-${swiperId}`"
-        v-bind="swiperConfig"
+        :modules="modules"
+        :pagination="paginationConfig"
+        :navigation="navigationConfig"
+        :scrollbar="scrollbarConfig"
+        :autoplay="autoplayConfig"
+        :controller="controllerConfig !== false ? controllerConfig : undefined"
+        :loop="props.loop"
+        :slidesPerView="adjustedSlidesPerView"
+        :spaceBetween="props.spaceBetween"
+        :centeredSlides="props.centeredSlides"
+        :direction="props.direction"
+        :speed="props.speed"
+        :effect="props.effect"
+        :cubeEffect="props.effect === 'cube' ? effectConfig.cubeEffect : undefined"
+        :fadeEffect="props.effect === 'fade' ? effectConfig.fadeEffect : undefined"
+        :coverflowEffect="(props.effect === 'coverflow' || props.effect === 'cylinder') ? effectConfig.coverflowEffect : undefined"
+        :flipEffect="props.effect === 'flip' ? effectConfig.flipEffect : undefined"
+        :cardsEffect="props.effect === 'cards' ? effectConfig.cardsEffect : undefined"
+        :creativeEffect="props.effect === 'creative' ? effectConfig.creativeEffect : undefined"
+        :breakpoints="props.breakpoints"
+        :wrapperClass="props.wrapperClass"
         @swiper="onSwiperInit"
         @slideChange="onSlideChange"
         @progress="onProgress"
+        @click="onSlideClick"
       >
         <!-- 데이터 기반 슬라이드 렌더링 (slides prop 사용 시) -->
         <template v-if="props.slides && props.slides.length > 0">
@@ -89,6 +111,16 @@
   import 'swiper/css/effect-cube';
   import 'swiper/css/effect-coverflow';
   import 'swiper/css/effect-flip';
+  import 'swiper/css/effect-cards';
+  import 'swiper/css/effect-creative'; 
+  
+  
+  // Swiper 모듈들을 전역 등록
+  import SwiperCore from 'swiper';
+  import { Navigation, Pagination, Scrollbar, Autoplay, Controller, EffectFade, EffectCube, EffectCoverflow, EffectFlip, EffectCards, EffectCreative } from 'swiper/modules';
+  
+  // 모든 모듈 등록
+  SwiperCore.use([Navigation, Pagination, Scrollbar, Autoplay, Controller, EffectFade, EffectCube, EffectCoverflow, EffectFlip, EffectCards, EffectCreative]);
   // ============================================================================
   // TYPES
   // ============================================================================
@@ -162,7 +194,7 @@
     centeredSlides?: boolean;
     direction?: 'horizontal' | 'vertical';
     speed?: number;
-    effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip';
+      effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip'| 'cards'| 'creative' | 'cylinder';
     breakpoints?: { [key: number]: any };
     
     // Controller 기반 다중 Swiper 관리
@@ -330,6 +362,8 @@
     EffectCube: null as any,
     EffectCoverflow: null as any,
     EffectFlip: null as any,
+    EffectCards: null as any,
+    EffectCreative: null as any,
   });
   
   // Controller 그룹 관리 (전역)
@@ -337,6 +371,10 @@
   
   const getRequiredModules = async (props: any) => {
     const modules = [];
+    
+    if (props.debug) {
+      console.log(`[getRequiredModules] Using globally registered modules for effect: ${props.effect}`);
+    }
     
     if (props.pagination && !moduleCache.Pagination) {
       const { Pagination } = await import('swiper/modules');
@@ -368,20 +406,65 @@
     }
     if (props.controller) modules.push(moduleCache.Controller);
     
-    // Effect 모듈들
-    const effectModuleMap = {
-      'fade': 'EffectFade',
-      'cube': 'EffectCube',
-      'coverflow': 'EffectCoverflow',
-      'flip': 'EffectFlip'
-    } as const;
-    
-    const effectModule = effectModuleMap[props.effect as keyof typeof effectModuleMap];
-    if (effectModule && !moduleCache[effectModule]) {
-      const module = await import('swiper/modules');
-      moduleCache[effectModule] = markRaw(module[effectModule]);
+    // Effect 모듈들 - 전역 등록된 모듈 사용
+    if (props.effect === 'fade') {
+      if (!moduleCache.EffectFade) {
+        moduleCache.EffectFade = markRaw(EffectFade);
+        if (props.debug) console.log('[getRequiredModules] EffectFade from global registry:', EffectFade);
+      }
+      modules.push(moduleCache.EffectFade);
+      if (props.debug) console.log('[getRequiredModules] EffectFade added to modules');
     }
-    if (effectModule) modules.push(moduleCache[effectModule]);
+    
+    if (props.effect === 'cube') {
+      if (!moduleCache.EffectCube) {
+        moduleCache.EffectCube = markRaw(EffectCube);
+        if (props.debug) console.log('[getRequiredModules] EffectCube from global registry:', EffectCube);
+      }
+      modules.push(moduleCache.EffectCube);
+      if (props.debug) console.log('[getRequiredModules] EffectCube added to modules');
+    }
+    
+    if (props.effect === 'coverflow' || props.effect === 'cylinder') {
+      if (!moduleCache.EffectCoverflow) {
+        moduleCache.EffectCoverflow = markRaw(EffectCoverflow);
+        if (props.debug) console.log('[getRequiredModules] EffectCoverflow from global registry:', EffectCoverflow);
+      }
+      modules.push(moduleCache.EffectCoverflow);
+      if (props.debug) console.log(`[getRequiredModules] EffectCoverflow added to modules for ${props.effect}`);
+    }
+    
+    if (props.effect === 'flip') {
+      if (!moduleCache.EffectFlip) {
+        moduleCache.EffectFlip = markRaw(EffectFlip);
+        if (props.debug) console.log('[getRequiredModules] EffectFlip from global registry:', EffectFlip);
+      }
+      modules.push(moduleCache.EffectFlip);
+      if (props.debug) console.log('[getRequiredModules] EffectFlip added to modules');
+    }
+    
+     if (props.effect === 'cards') {
+       if (!moduleCache.EffectCards) {
+         moduleCache.EffectCards = markRaw(EffectCards);
+         if (props.debug) console.log('[getRequiredModules] EffectCards from global registry:', EffectCards);
+       }
+       modules.push(moduleCache.EffectCards);
+       if (props.debug) console.log('[getRequiredModules] EffectCards added to modules');
+     }
+    
+    if (props.effect === 'creative') {
+      if (!moduleCache.EffectCreative) {
+        moduleCache.EffectCreative = markRaw(EffectCreative);
+        if (props.debug) console.log('[getRequiredModules] EffectCreative from global registry:', EffectCreative);
+      }
+      modules.push(moduleCache.EffectCreative);
+      if (props.debug) console.log('[getRequiredModules] EffectCreative added to modules');
+    }
+    
+    if (props.debug) {
+      console.log(`[getRequiredModules] Final modules:`, modules.map(m => m.name || 'Unknown'));
+      console.log(`[getRequiredModules] Note: All effect modules are globally registered via SwiperCore.use()`);
+    }
     
     return markRaw(modules);
   };
@@ -424,6 +507,7 @@
     afterSlideChange: [{ activeIndex: number }];
     reachEnd: [];
     reachBeginning: [];
+    slideClick: [{ slide: any; index: number; slideData: any; swiper: any }];
   }>(); 
   
   // 반응형 참조
@@ -435,6 +519,9 @@
   const isAtStart = ref(true);
   const isAtEnd = ref(false);
   const modules = shallowRef<any[]>([]);
+  
+  // 디버그용 슬라이드 변경 카운터
+  const slideChangeCount = ref(0);
   
   // 간단한 ID 시스템 (Controller 기반으로 단순화)
   const swiperId = computed(() => 
@@ -490,21 +577,115 @@
     )
   );
   
-  // 최종 Swiper 설정 (Controller 기반으로 단순화)
-  const swiperConfig = computed(() => ({
+  // Effect별 추가 설정
+  const effectConfig = computed(() => {
+    switch (props.effect) {
+      case 'cube':
+        return {
+          cubeEffect: {
+            shadow: true,
+            slideShadows: true,
+            shadowOffset: 50,
+            shadowScale: 0.94,
+          }
+        };
+        case 'coverflow':
+          return {
+            coverflowEffect: {
+              rotate: 0,
+              stretch: 0,
+              depth: 100,
+              modifier: 1,
+              slideShadows: true,
+            }
+          };
+        //   rotate: 120,       // 극대화된 회전각
+        //       stretch: -100,     // 최대 겹침 효과
+        //       depth: 800,        // 최대 깊이
+        //       modifier: 5,       // 최대 효과 강도
+        //       slideShadows: true,
+        //       scale: 0.6,        // 더 작은 비활성 슬라이드
+        //       rotate: 50,
+        case 'cylinder':
+          return {
+            coverflowEffect: {
+                rotate: 50,
+                stretch: 0,
+                depth: 100,
+                modifier: 1,
+                slideShadows: true,
+            }
+          };
+      case 'flip':
+        return {
+          flipEffect: {
+            slideShadows: true,
+            limitRotation: true,
+          }
+        };
+      case 'fade':
+        return {
+          fadeEffect: {
+            crossFade: true
+          }
+        };
+       case 'cards':
+         return {
+           cardsEffect: {
+             slideShadows: true,
+             perSlideOffset: 8,
+             perSlideRotate: 2,
+             rotate: true,
+           }
+         };
+      case 'creative':
+        return {
+          creativeEffect: {
+            prev: {
+              shadow: true,
+              translate: ['-120%', 0, -500],
+              rotate: [0, 0, -90],
+            },
+            next: {
+              shadow: true,
+              translate: ['120%', 0, -500],
+              rotate: [0, 0, 90],
+            },
+          }
+        };
+      default:
+        return {};
+    }
+  });
+
+  // Effect에 따른 slidesPerView 조정
+  const adjustedSlidesPerView = computed(() => {
+    // Cube, Fade, Flip, Cards, Creative effect는 slidesPerView가 1이어야 함
+    if (['cube', 'fade', 'flip', 'cards', 'creative'].includes(props.effect || '')) {
+      return 1;
+    }
+    // Cylinder effect는 3개가 보이도록 설정
+    if (props.effect === 'cylinder') {
+      return 3;
+    }
+    return props.slidesPerView;
+  });
+
+  // 최종 Swiper 설정 (Effect 설정 포함)
+  const swiperConfig = computed(() => {
+    const baseConfig: any = {
     modules: modules.value,
     pagination: paginationConfig.value,
     navigation: navigationConfig.value,
     scrollbar: scrollbarConfig.value,
     autoplay: autoplayConfig.value,
-    controller: controllerConfig.value, // Controller 설정 추가
     loop: props.loop,
-    slidesPerView: props.slidesPerView,
-    spaceBetween: props.spaceBetween,
-    centeredSlides: props.centeredSlides,
+      slidesPerView: adjustedSlidesPerView.value,
+      spaceBetween: props.effect === 'cylinder' ? 0 : props.spaceBetween,
+      centeredSlides: props.effect === 'cylinder' ? true : props.centeredSlides,
     direction: props.direction,
     speed: props.speed,
-    effect: props.effect,
+      effect: props.effect === 'cylinder' ? 'coverflow' : props.effect,
     breakpoints: props.breakpoints,
     wrapperClass: props.wrapperClass,
     a11y: {
@@ -515,7 +696,25 @@
       lastSlideMessage: 'This is the last slide',
       paginationBulletMessage: 'Go to slide {{index}}',
     },
-  }));
+    };
+
+    // Effect별 설정 추가
+    const effectSettings = effectConfig.value;
+    Object.keys(effectSettings).forEach(key => {
+      baseConfig[key] = effectSettings[key];
+    });
+
+    // Controller가 활성화된 경우만 추가
+    if (controllerConfig.value !== false) {
+      baseConfig.controller = controllerConfig.value;
+    }
+
+    if (props.debug) {
+      console.log(`[swiperConfig] Effect: ${props.effect}, Config:`, baseConfig);
+    }
+
+    return baseConfig;
+  });
   
   // DOM 요소 연결을 위한 재시도 함수
   const connectElements = async (swiper: any, retryCount = 0) => {
@@ -535,34 +734,26 @@
       if (nextEl && prevEl) {
         // Swiper Navigation 모듈 연결
         if (swiper.navigation) {
+          // 기존 navigation 제거
+          if (swiper.navigation.nextEl || swiper.navigation.prevEl) {
+            swiper.navigation.destroy();
+          }
+          
           swiper.navigation.nextEl = nextEl;
           swiper.navigation.prevEl = prevEl;
           swiper.navigation.init();
           swiper.navigation.update();
+          
+          if (props.debug) {
+            console.log(`[SCSwiper ${swiperId.value}] Navigation module reinitialized`);
+          }
         }
         
-        // 추가: 직접 DOM 이벤트 리스너 추가 (백업용)
-        nextEl.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (props.debug) {
-            console.log(`[SCSwiper ${swiperId.value}] Next button clicked (direct event)`);
-          }
-          swiper.slideNext();
-        });
-        
-        prevEl.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (props.debug) {
-            console.log(`[SCSwiper ${swiperId.value}] Prev button clicked (direct event)`);
-          }
-          swiper.slidePrev();
-        });
+        // 직접 DOM 이벤트 리스너는 제거 - Swiper 내장 navigation 사용
         
         if (props.debug) {
           console.log(`[SCSwiper ${swiperId.value}] Navigation connected successfully on attempt ${retryCount + 1}`);
-          console.log(`[SCSwiper ${swiperId.value}] Direct event listeners added to navigation buttons`);
+          console.log(`[SCSwiper ${swiperId.value}] Using Swiper's built-in navigation (no direct listeners)`);
         }
       } else {
         if (props.debug) {
@@ -620,7 +811,11 @@
           // bullets 타입의 경우 수동으로 bullets 생성
           const renderBullets = () => {
             const total = swiper.slides.length;
-            const current = swiper.realIndex;
+            const current = swiper.activeIndex;
+            
+            if (props.debug) {
+              console.log(`[${swiperId.value}] Bullets render - activeIndex: ${current}, realIndex: ${swiper.realIndex}, total: ${total}`);
+            }
             
             let bulletsHTML = '';
             for (let i = 0; i < total; i++) {
@@ -629,10 +824,33 @@
             }
             paginationEl.innerHTML = bulletsHTML;
             
-            // bullet 클릭 이벤트 추가
+            // bullet 클릭 이벤트 추가 (이벤트 중복 방지)
             paginationEl.querySelectorAll('.swiper-pagination-bullet').forEach((bullet, index) => {
-              bullet.addEventListener('click', () => {
-                swiper.slideTo(index);
+              // 기존 리스너 제거
+              bullet.replaceWith(bullet.cloneNode(true));
+            });
+            
+            paginationEl.querySelectorAll('.swiper-pagination-bullet').forEach((bullet, index) => {
+              bullet.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (props.debug) {
+                  console.log(`[${swiperId.value}] Bullet clicked: ${index}, current: ${swiper.activeIndex}`);
+                }
+                
+                // 이미 같은 슬라이드면 무시
+                if (index === swiper.activeIndex) {
+                  return;
+                }
+                
+                // loop이 비활성화된 경우 직접 이동
+                if (!props.loop) {
+                  swiper.slideTo(index, 300);
+                } else {
+                  // loop이 활성화된 경우 실제 슬라이드로 이동
+                  swiper.slideToLoop(index, 300);
+                }
               });
             });
           };
@@ -694,6 +912,12 @@
           console.log(`[SCSwiper ${swiperId.value}] Pagination type: ${props.paginationType}`);
           console.log(`[SCSwiper ${swiperId.value}] Pagination config:`, swiper.params.pagination);
           console.log(`[SCSwiper ${swiperId.value}] Pagination element innerHTML:`, paginationEl.innerHTML);
+          console.log(`[SCSwiper ${swiperId.value}] Effect: ${props.effect}`);
+          console.log(`[SCSwiper ${swiperId.value}] Effect config:`, swiper.params.effect);
+          console.log(`[SCSwiper ${swiperId.value}] Loaded modules:`, modules.value.map(m => m.name || 'Unknown'));
+          console.log(`[SCSwiper ${swiperId.value}] Effect object:`, swiper[props.effect || '']);
+          console.log(`[SCSwiper ${swiperId.value}] SlidesPerView:`, swiper.params.slidesPerView);
+          console.log(`[SCSwiper ${swiperId.value}] Wrapper classes:`, swiper.wrapperEl?.className);
         }
       } else {
         if (props.debug) {
@@ -704,7 +928,7 @@
       }
     }
   };
-
+  
   // 이벤트 핸들러들
   const onSwiperInit = async (swiper: any) => {
     swiperInstance.value = swiper;
@@ -712,8 +936,79 @@
     
     if (props.debug) {
       console.log(`[SCSwiper ${swiperId.value}] Swiper initialized, connecting elements...`);
+      console.log(`[SCSwiper ${swiperId.value}] Initial effect state:`, swiper.params.effect);
+      console.log(`[SCSwiper ${swiperId.value}] Expected effect:`, props.effect);
     }
     
+    // Effect가 올바르게 적용되지 않은 경우 강제 설정
+    if (swiper.params.effect !== props.effect && props.effect && props.effect !== 'slide') {
+      if (props.debug) {
+        console.log(`[SCSwiper ${swiperId.value}] Force setting effect to: ${props.effect}`);
+      }
+      
+      // Effect 파라미터 강제 설정
+      swiper.params.effect = props.effect;
+      
+      // Effect별 설정도 강제 적용
+      const effectSettings = effectConfig.value;
+      Object.keys(effectSettings).forEach(key => {
+        swiper.params[key] = effectSettings[key];
+      });
+      
+      // Swiper 업데이트
+      swiper.update();
+      swiper.updateSize();
+      swiper.updateSlides();
+      
+      if (props.debug) {
+        console.log(`[SCSwiper ${swiperId.value}] Effect updated to:`, swiper.params.effect);
+        console.log(`[SCSwiper ${swiperId.value}] Effect settings:`, effectSettings);
+      }
+    }
+    
+    // Cylinder effect 전용 강제 설정
+    if (props.effect === 'cylinder') {
+      const forceCylinderEffect = () => {
+        // Swiper에 coverflow 클래스 강제 추가
+        if (swiper.el) {
+          swiper.el.classList.add('swiper-coverflow');
+        }
+        
+        // Coverflow 효과 파라미터 강제 재설정
+        swiper.params.effect = 'coverflow';
+        swiper.params.coverflowEffect = {
+          rotate: 120,
+          stretch: -100,
+          depth: 800,
+          modifier: 5,
+          slideShadows: true,
+          scale: 0.6,
+        };
+        
+        // 강제 업데이트
+        swiper.update();
+        swiper.updateSize();
+        swiper.updateSlides();
+        
+        const slides = swiper.slides;
+        if (props.debug) {
+          console.log(`[SCSwiper ${swiperId.value}] Cylinder effect - Force applied`);
+          console.log(`[SCSwiper ${swiperId.value}] Effect:`, swiper.params.effect);
+          console.log(`[SCSwiper ${swiperId.value}] Coverflow params:`, swiper.params.coverflowEffect);
+          console.log(`[SCSwiper ${swiperId.value}] Swiper classes:`, swiper.el?.className);
+          slides.forEach((slide, index) => {
+            console.log(`  Slide ${index}:`, slide.className);
+          });
+        }
+      };
+      
+      // 초기 강제 설정
+      setTimeout(forceCylinderEffect, 100);
+      
+      // 슬라이드 변경 시마다 강제 설정 확인
+      swiper.on('slideChange', forceCylinderEffect);
+    }
+
     // DOM 요소 연결 (재시도 로직 포함)
     await nextTick();
     connectElements(swiper);
@@ -752,6 +1047,14 @@
     isAtStart.value = swiper.isBeginning;
     isAtEnd.value = swiper.isEnd;
     
+    // 디버그 카운터 증가
+    slideChangeCount.value++;
+    
+    if (props.debug) {
+      console.log(`[${swiperId.value}] Slide change #${slideChangeCount.value}: ${previousIndex} → ${swiper.activeIndex} (realIndex: ${swiper.realIndex})`);
+      console.log(`[${swiperId.value}] Navigation elements: next=${swiper.navigation?.nextEl ? 'connected' : 'none'}, prev=${swiper.navigation?.prevEl ? 'connected' : 'none'}`);
+    }
+    
     // 이벤트 발생
     emit('slideChange', {
       activeIndex: swiper.activeIndex,
@@ -766,6 +1069,41 @@
     }
     if (swiper.isEnd) {
       emit('reachEnd');
+    }
+  };
+
+  const onSlideClick = (swiper: any, event: Event) => {
+    const clickedSlide = event.target as HTMLElement;
+    const slideElement = clickedSlide.closest('.swiper-slide') as HTMLElement;
+    
+    if (slideElement) {
+      // 슬라이드 인덱스 찾기
+      const slides = Array.from(swiper.slides);
+      const clickedIndex = slides.indexOf(slideElement);
+      
+      // 슬라이드 데이터 찾기
+      let slideData = null;
+      if (props.slides && props.slides[clickedIndex]) {
+        slideData = props.slides[clickedIndex];
+      }
+      
+      if (props.debug) {
+        console.log(`[${swiperId.value}] Slide clicked:`, {
+          index: clickedIndex,
+          activeIndex: swiper.activeIndex,
+          realIndex: swiper.realIndex,
+          slideData,
+          slideElement
+        });
+      }
+      
+      // 이벤트 발생
+      emit('slideClick', {
+        slide: slideElement,
+        index: clickedIndex,
+        slideData,
+        swiper
+      });
     }
   };
   
@@ -792,10 +1130,11 @@
       await nextTick(); // 추가 틱으로 안정성 확보
       
       if (props.debug) {
-        console.log(`[SCSwiper ${swiperId.value}] Mounted with modules:`, modules.value);
-        console.log(`[SCSwiper ${swiperId.value}] Config:`, swiperConfig.value);
-        console.log(`[SCSwiper ${swiperId.value}] Pagination config:`, paginationConfig.value);
-        console.log(`[SCSwiper ${swiperId.value}] Navigation config:`, navigationConfig.value);
+        console.log(`[SCSwiper ${swiperId.value}] Mounted with modules:`, modules.value.map(m => m.name || 'Unknown'));
+        console.log(`[SCSwiper ${swiperId.value}] Effect:`, props.effect);
+        console.log(`[SCSwiper ${swiperId.value}] Effect config:`, effectConfig.value);
+        console.log(`[SCSwiper ${swiperId.value}] Adjusted SlidesPerView:`, adjustedSlidesPerView.value);
+        console.log(`[SCSwiper ${swiperId.value}] Final swiperConfig:`, swiperConfig.value);
         
         // DOM 요소 확인
         const nextEl = document.querySelector(`.swiper-button-next-${swiperId.value}`);
@@ -940,7 +1279,7 @@
   
   /* ===== SWIPER 기본 스타일 ===== */
   /* Navigation 버튼 */
-  :deep(.swiper-button-next),
+  /* :deep(.swiper-button-next),
   :deep(.swiper-button-prev) {
     display: flex !important;
     align-items: center !important;
@@ -965,19 +1304,19 @@
     transform: scale(1.1) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
   }
-
+  
   :deep(.swiper-button-next.swiper-button-disabled),
   :deep(.swiper-button-prev.swiper-button-disabled) {
     opacity: 0.3 !important;
     cursor: not-allowed !important;
   }
-
+  
   :deep(.swiper-button-next::after),
   :deep(.swiper-button-prev::after) {
     font-size: 18px !important;
     font-weight: 900 !important;
-  }
-
+  } */
+  
   /* Pagination */
   :deep(.swiper-pagination) {
     display: block !important;
@@ -986,7 +1325,7 @@
     opacity: 1 !important;
     visibility: visible !important;
   }
-
+  
   :deep(.swiper-pagination-bullet) {
     width: 12px !important;
     height: 12px !important;
@@ -995,12 +1334,12 @@
     margin: 0 4px !important;
     transition: all 0.3s ease !important;
   }
-
+  
   :deep(.swiper-pagination-bullet-active) {
     background: #007aff !important;
     transform: scale(1.2) !important;
   }
-
+  
   /* Pagination fraction */
   :deep(.swiper-pagination-fraction) {
     display: block !important;
@@ -1020,7 +1359,7 @@
     visibility: visible !important;
     text-align: center !important;
   }
-
+  
   /* Pagination progressbar */
   :deep(.swiper-pagination-progressbar),
   :deep(.swiper-pagination[data-type="progressbar"]) {
@@ -1042,16 +1381,163 @@
     transform-origin: left center !important;
     transition: transform 0.3s ease !important;
   }
-
+  
   /* Scrollbar */
   :deep(.swiper-scrollbar) {
     background: rgba(0, 0, 0, 0.1) !important;
     border-radius: 4px !important;
   }
-
+  
   :deep(.swiper-scrollbar-drag) {
     background: #007aff !important;
     border-radius: 4px !important;
+  }
+  
+  /* Cards Effect 전용 스타일 */
+  :deep(.swiper-cards) .swiper-slide {
+    border-radius: 18px !important;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2) !important;
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%) !important;
+    overflow: hidden !important;
+  }
+
+  :deep(.swiper-cards) .swiper-slide.swiper-slide-active {
+    z-index: 10 !important;
+    transform: scale(1.02) !important;
+  }
+
+  :deep(.swiper-cards) .swiper-slide-shadow-cards {
+    background: rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Creative Effect 전용 스타일 */
+  :deep(.swiper-creative) .swiper-slide {
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%) !important;
+    overflow: hidden !important;
+  }
+
+  :deep(.swiper-creative) .swiper-slide.swiper-slide-shadow-creative {
+    background: rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Cylinder Effect 컨테이너 설정 - 강화된 3D */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) {
+    perspective: 2000px !important;
+    perspective-origin: center center !important;
+    overflow: visible !important;
+    min-height: 400px !important;
+    padding: 50px 0 !important;
+    margin: 30px 0 !important;
+  }
+
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper {
+    overflow: visible !important;
+    height: 100% !important;
+  }
+
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow {
+    transform-style: preserve-3d !important;
+    overflow: visible !important;
+    height: 100% !important;
+  }
+
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-wrapper {
+    transform-style: preserve-3d !important;
+    overflow: visible !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Swiper가 coverflow 클래스를 갖도록 강제 */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper {
+    /* Swiper coverflow 효과가 확실히 적용되도록 */
+  }
+
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper.swiper-coverflow .swiper-wrapper {
+    transform-style: preserve-3d !important;
+  }
+
+  /* Cylinder Effect 전용 스타일 - 강화된 3D */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-slide,
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide {
+    border-radius: 15px !important;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4) !important;
+    background: linear-gradient(45deg, #a8edea 0%, #fed6e3 100%) !important;
+    overflow: visible !important;
+    transform-style: preserve-3d !important;
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    backface-visibility: visible !important;
+    will-change: transform !important;
+    
+    /* 기본 cylinder 스타일 강제 적용 */
+    transform: scale(0.8) translateZ(-200px) rotateY(45deg) !important;
+  }
+  
+  /* 기본 슬라이드들에 cylinder 형태 강제 적용 */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-slide:nth-child(1) {
+    transform: scale(0.6) translateZ(-300px) rotateY(90deg) translateX(-50px) !important;
+    opacity: 0.5 !important;
+  }
+  
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-slide:nth-child(2) {
+    transform: scale(1.1) translateZ(0px) rotateY(0deg) !important;
+    opacity: 1 !important;
+    z-index: 10 !important;
+  }
+  
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-slide:nth-child(3) {
+    transform: scale(0.6) translateZ(-300px) rotateY(-90deg) translateX(50px) !important;
+    opacity: 0.5 !important;
+  }
+
+  /* 가운데 슬라이드 (active) - 앞으로 나오고 위로 올라감 */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide.swiper-slide-active {
+    z-index: 20 !important;
+    transform: scale(1.2) translateY(-30px) translateZ(100px) rotateY(0deg) !important;
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5) !important;
+    border: 4px solid rgba(255, 255, 255, 0.4) !important;
+    filter: brightness(1.1) contrast(1.1) !important;
+  }
+
+  /* 이전 슬라이드 - 왼쪽으로 극적 회전하며 뒤로 (더 구체적인 선택자) */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper.swiper-coverflow .swiper-wrapper .swiper-slide.swiper-slide-prev,
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide.swiper-slide-prev {
+    z-index: 5 !important;
+    transform: scale(0.65) translateY(40px) translateZ(-150px) rotateY(85deg) translateX(-30px) !important;
+    opacity: 0.4 !important;
+    filter: brightness(0.5) contrast(0.8) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    transform-origin: center center !important;
+  }
+
+  /* 다음 슬라이드 - 오른쪽으로 극적 회전하며 뒤로 (더 구체적인 선택자) */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper.swiper-coverflow .swiper-wrapper .swiper-slide.swiper-slide-next,
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide.swiper-slide-next {
+    z-index: 5 !important;
+    transform: scale(0.65) translateY(40px) translateZ(-150px) rotateY(-85deg) translateX(30px) !important;
+    opacity: 0.4 !important;
+    filter: brightness(0.5) contrast(0.8) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    transform-origin: center center !important;
+  }
+
+  /* 양쪽 슬라이드들 기본 스타일 (prev/next가 아닌 경우) */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide:not(.swiper-slide-active):not(.swiper-slide-prev):not(.swiper-slide-next) {
+    z-index: 5 !important;
+    transform: scale(0.85) translateY(15px) translateZ(-30px) !important;
+    opacity: 0.7 !important;
+    filter: brightness(0.8) !important;
+  }
+
+  /* 그림자 효과 개선 */
+  :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide-shadow-coverflow {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6)) !important;
+    border-radius: 15px !important;
   }
   
   /* 반응형 */
@@ -1066,6 +1552,52 @@
     :deep(.swiper-button-next::after),
     :deep(.swiper-button-prev::after) {
       font-size: 14px !important;
+    }
+    
+    /* 모바일에서 Cards 효과 조정 */
+    :deep(.swiper-cards) .swiper-slide {
+      border-radius: 12px !important;
+    }
+    
+    /* 모바일에서 Cylinder 효과 조정 - 강화된 3D */
+    :deep(.sc-swiper-container[data-effect="cylinder"]) {
+      perspective: 1500px !important;
+    }
+
+    /* :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide {
+      transform-style: preserve-3d !important;
+      transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+      border-radius: 10px !important;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+
+      &.swiper-slide-next ,
+      &.swiper-slide-prev {
+        transform: scale(1);
+        opacity: 1;
+        z-index: 2;
+      }
+
+    }
+     */
+    :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide.swiper-slide-active {
+      transform: scale(1.15) translateY(-25px) translateZ(80px) !important;
+    }
+    
+    /* 모바일에서 이전 슬라이드 - 강화된 회전 */
+    :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide.swiper-slide-prev {
+      transform: scale(0.6) translateY(30px) translateZ(-120px) rotateY(75deg) translateX(-20px) !important;
+      opacity: 0.3 !important;
+    }
+    
+    /* 모바일에서 다음 슬라이드 - 강화된 회전 */
+    :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide.swiper-slide-next {
+      transform: scale(0.6) translateY(30px) translateZ(-120px) rotateY(-75deg) translateX(20px) !important;
+      opacity: 0.3 !important;
+    }
+    
+    /* 모바일에서 기본 양쪽 슬라이드 */
+    :deep(.sc-swiper-container[data-effect="cylinder"]) .swiper-coverflow .swiper-slide:not(.swiper-slide-active):not(.swiper-slide-prev):not(.swiper-slide-next) {
+      transform: scale(0.8) translateY(20px) translateZ(-80px) !important;
     }
   }
   </style>
