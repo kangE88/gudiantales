@@ -1,333 +1,108 @@
-  <style scoped>
-  .sc-swiper-container {
-    position: relative;
-    width: 100%;
-    min-height: 300px; /* 최소 높이 설정 */
-  }
-
-  .sc-swiper-container .swiper {
-    width: 100%;
+/* Vertical mode specific styles */
+.sc-swiper[data-direction="vertical"] {
+  height: 400px; /* Default height for vertical mode */
+  
+  .sc-swiper__viewport {
     height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
-  /* 접근성을 위한 Screen Reader 전용 클래스 */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-  
-  /* 기본 슬라이드 스타일 */
-  .sc-swiper-slide-default {
-    padding: 20px;
-    text-align: center;
-    background: #f8f9fa;
-    border-radius: 8px;
-  }
-  
-  .sc-swiper-slide-default h3 {
-    margin: 0 0 12px 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
-  }
-  
-  .sc-swiper-slide-default p {
-    margin: 0 0 16px 0;
-    font-size: 14px;
-    color: #666;
-    line-height: 1.5;
-  }
-  
-  .sc-swiper-slide-default img {
-    max-width: 100%;
+  .sc-swiper__track {
+    flex-direction: column;
     height: auto;
-    border-radius: 4px;
+    min-height: 100%;
   }
   
-  /* Pagination */
-  :deep(.swiper-pagination) {
-    display: block !important;
-    bottom: 10px !important;
-    z-index: 10 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-  }
-  
-  :deep(.swiper-pagination-bullet) {
-    width: 12px !important;
-    height: 12px !important;
-    background: rgba(0, 0, 0, 0.3) !important;
-    opacity: 1 !important;
-    margin: 0 4px !important;
-    transition: all 0.3s ease !important;
-  }
-  
-  :deep(.swiper-pagination-bullet-active) {
-    background: #007aff !important;
-    transform: scale(1.2) !important;
-  }
-  
-  /* Pagination fraction */
-  :deep(.swiper-pagination-fraction) {
-    display: block !important;
-    position: absolute !important;
-    bottom: 10px !important;
-    background: rgba(0, 0, 0, 0.7) !important;
-    color: white !important;
-    padding: 6px 12px !important;
-    border-radius: 12px !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    width: auto !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    z-index: 10 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    text-align: center !important;
-  }
-  
-  /* Pagination progressbar */
-  :deep(.swiper-pagination-progressbar),
-  :deep(.swiper-pagination[data-type="progressbar"]) {
-    position: relative !important;
-    background: rgba(0, 0, 0, 0.1) !important;
-    height: 4px !important;
-    border-radius: 2px !important;
-    overflow: hidden !important;
-  }
-
-  :deep(.swiper-pagination-progressbar-fill) {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  .sc-slide {
     width: 100% !important;
-    height: 100% !important;
-    background: #007aff !important;
-    border-radius: 2px !important;
-    transform-origin: left center !important;
-    transition: transform 0.3s ease !important;
+    height: auto;
+    min-height: calc(100% / var(--slides-per-view, 1));
   }
   
-  /* Scrollbar */
-  :deep(.swiper-scrollbar) {
-    background: rgba(0, 0, 0, 0.1) !important;
-    border-radius: 4px !important;
-  }
-  
-  :deep(.swiper-scrollbar-drag) {
-    background: #007aff !important;
-    border-radius: 4px !important;
-  }
-  
-  /* Cards Effect 전용 스타일 */
-  :deep(.swiper-cards) .swiper-slide {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    font-weight: bold;
-    width: 240px; /* Adjust width as needed */
-    height: 280px; /* Adjust height as needed */
-  }
-
-  /* Additional styling for a more distinct card look */
-  :deep(.swiper-cards) .swiper-slide:nth-child(odd) {
-    background-color: #f0f0f0;
-  }
-  :deep(.swiper-cards) .swiper-slide:nth-child(even) {
-    background-color: #ffffff;
-  }
-  /* :deep(.swiper-cards) .swiper-slide {
-    border-radius: 18px !important;
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2) !important;
-    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%) !important;
-    overflow: hidden !important;
-  }
-
-  :deep(.swiper-cards) .swiper-slide.swiper-slide-active {
-    z-index: 10 !important;
-    transform: scale(1.02) !important;
-  }
-
-  :deep(.swiper-cards) .swiper-slide-shadow-cards {
-    background: rgba(0, 0, 0, 0.3) !important;
-  } */
-
-  /* Creative Effect 전용 스타일 */
-  :deep(.swiper-creative) .swiper-slide {
-    border-radius: 12px !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%) !important;
-    overflow: hidden !important;
-  }
-
-  :deep(.swiper-creative) .swiper-slide.swiper-slide-shadow-creative {
-    background: rgba(0, 0, 0, 0.2) !important;
-  }
-
-  /* Cylinder Effect는 글로벌 스타일에서 처리 */
-  
-  /* 반응형 */
-  @media (max-width: 768px) {
-    :deep(.swiper-button-next),
-    :deep(.swiper-button-prev) {
-      width: 36px !important;
-      height: 36px !important;
-      margin-top: -18px !important;
+  /* Pagination positioning for vertical mode */
+  .sc-swiper__pagination {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    left: auto;
+    bottom: auto;
+    width: auto;
+    height: auto;
+    
+    &[data-type="bullets"] {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
     
-    :deep(.swiper-button-next::after),
-    :deep(.swiper-button-prev::after) {
-      font-size: 14px !important;
+    &[data-type="progressbar"] {
+      width: 4px;
+      height: 80%;
+      flex-direction: column;
     }
     
-    /* 모바일에서 Cards 효과 조정 */
-    :deep(.swiper-cards) .swiper-slide {
-      border-radius: 12px !important;
+    &[data-type="fraction"] {
+      writing-mode: vertical-rl;
+    }
+  }
+  
+  /* Navigation buttons for vertical mode */
+  .sc-btn.nav {
+    &.prev {
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      right: auto;
+      margin-top: 0;
+      
+      &::before {
+        content: '⌃';
+        transform: none;
+      }
     }
     
-    /* 모바일 Cylinder 효과는 글로벌 스타일에서 처리 */
+    &.next {
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      right: auto;
+      top: auto;
+      margin-top: 0;
+      
+      &::before {
+        content: '⌄';
+        transform: none;
+      }
+    }
   }
-  /* 슬라이드 클릭 가능 커서 스타일 */
-:deep(.swiper-slide) {
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-:deep(.swiper-slide:hover) {
-  transform: scale(1.02);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-:deep(.swiper-slide:active) {
-  transform: scale(0.98);
-}
-  </style>
-
-<!-- Cylinder Effect 글로벌 스타일 - Mac 환경 호환성 개선 -->
-<style>
-/* Cylinder Effect 컨테이너 설정 */
-.sc-swiper-container[data-effect="cylinder"] {
-  perspective: 2000px !important;
-  perspective-origin: center center !important;
-  overflow: visible !important;
-  min-height: 400px !important;
-  padding: 50px 0 !important;
-  margin: 30px 0 !important;
-}
-
-.sc-swiper-container[data-effect="cylinder"] .swiper {
-  overflow: visible !important;
-  height: 100% !important;
-  transform-style: preserve-3d !important;
-}
-
-.sc-swiper-container[data-effect="cylinder"] .swiper-coverflow {
-  transform-style: preserve-3d !important;
-  overflow: visible !important;
-  height: 100% !important;
-}
-
-.sc-swiper-container[data-effect="cylinder"] .swiper-wrapper {
-  transform-style: preserve-3d !important;
-  overflow: visible !important;
-  height: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-}
-
-/* Cylinder Effect 슬라이드 기본 스타일 */
-.sc-swiper-container[data-effect="cylinder"] .swiper-slide {
-  border-radius: 15px !important;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4) !important;
-  overflow: visible !important;
-  transform-style: preserve-3d !important;
-  transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-  backface-visibility: visible !important;
-  will-change: transform !important;
-  padding-top: 50px !important;
-  transform: scale(0.8) translateZ(-200px) rotateY(45deg) !important;
-}
-
-/* 활성 슬라이드 (가운데) */
-.sc-swiper-container[data-effect="cylinder"] .swiper-slide-active {
-  z-index: 20 !important;
-  transform: scale(1.2) translateY(-30px) translateZ(100px) rotateY(0deg) !important;
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5) !important;
-  border: 4px solid rgba(255, 255, 255, 0.4) !important;
-  filter: brightness(1.1) contrast(1.1) !important;
-}
-
-/* 이전 슬라이드 */
-.sc-swiper-container[data-effect="cylinder"] .swiper-slide-prev {
-  z-index: 5 !important;
-  transform: scale(0.65) translateY(40px) translateZ(-150px) rotateY(85deg) translateX(-30px) !important;
-  opacity: 0.4 !important;
-  filter: brightness(0.5) contrast(0.8) !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
-  transform-origin: center center !important;
-}
-
-/* 다음 슬라이드 */
-.sc-swiper-container[data-effect="cylinder"] .swiper-slide-next {
-  z-index: 5 !important;
-  transform: scale(0.65) translateY(40px) translateZ(-150px) rotateY(-85deg) translateX(30px) !important;
-  opacity: 0.4 !important;
-  filter: brightness(0.5) contrast(0.8) !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
-  transform-origin: center center !important;
-}
-
-/* 기타 슬라이드들 */
-.sc-swiper-container[data-effect="cylinder"] .swiper-slide:not(.swiper-slide-active):not(.swiper-slide-prev):not(.swiper-slide-next) {
-  z-index: 5 !important;
-  transform: scale(0.85) translateY(15px) translateZ(-30px) !important;
-  opacity: 0.7 !important;
-  filter: brightness(0.8) !important;
-}
-
-/* 그림자 효과 */
-.sc-swiper-container[data-effect="cylinder"] .swiper-slide-shadow-coverflow {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6)) !important;
-  border-radius: 15px !important;
-}
-
-/* 모바일 반응형 */
-@media (max-width: 768px) {
-  .sc-swiper-container[data-effect="cylinder"] {
-    perspective: 1500px !important;
+/* Additional styles for better vertical experience */
+.sc-swiper[data-direction="vertical"] {
+  /* Smooth scrolling behavior */
+  .sc-swiper__track {
+    scroll-behavior: smooth;
+    transform: translateY(var(--track-y, 0px));
+    transition: transform var(--swiper-speed, 300ms) ease;
   }
   
-  .sc-swiper-container[data-effect="cylinder"] .swiper-slide-active {
-    transform: scale(1.15) translateY(-25px) translateZ(80px) !important;
-  }
-  
-  .sc-swiper-container[data-effect="cylinder"] .swiper-slide-prev {
-    transform: scale(0.6) translateY(30px) translateZ(-120px) rotateY(75deg) translateX(-20px) !important;
-    opacity: 0.3 !important;
-  }
-  
-  .sc-swiper-container[data-effect="cylinder"] .swiper-slide-next {
-    transform: scale(0.6) translateY(30px) translateZ(-120px) rotateY(-75deg) translateX(20px) !important;
-    opacity: 0.3 !important;
-  }
-  
-  .sc-swiper-container[data-effect="cylinder"] .swiper-slide:not(.swiper-slide-active):not(.swiper-slide-prev):not(.swiper-slide-next) {
-    transform: scale(0.8) translateY(20px) translateZ(-80px) !important;
+  /* Better spacing for vertical slides */
+  .sc-slide {
+    margin-top: var(--swiper-gap, 8px);
+    margin-left: 0;
+    height: var(--slide-height, auto);
+    
+    &:first-child {
+      margin-top: 0;
+    }
   }
 }
-</style>
+
+
+
+-=-=-=-=-
 <!-- components/SCSwiper.vue -->
 <template>
     <div 
