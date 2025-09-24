@@ -884,9 +884,9 @@ export interface EffectSettings {
          return {
            cardsEffect: {
              slideShadows: true,
-             perSlideOffset: 8,
-             perSlideRotate: 2,
-             rotate: true,
+             perSlideOffset: 5,       // 카드 간격 조정
+             perSlideRotate: 30,       // 카드 회전각 조정
+             rotate: true,            // 회전 효과 활성화
            }
          };
       case 'creative':
@@ -1050,8 +1050,13 @@ export interface EffectSettings {
         if (props.paginationType === 'fraction') {
           const updatePagination = () => {
             const current = swiper.realIndex + 1;
-            const total = swiper.slides.length;
+            // cards 효과에서는 실제 데이터 슬라이드 개수 사용
+            const total = props.slides?.length || swiper.slides.length;
             paginationEl.innerHTML = `${current} / ${total}`;
+            
+            if (props.debug) {
+              console.log(`[${swiperId.value}] Fraction updated - realIndex: ${swiper.realIndex}, activeIndex: ${swiper.activeIndex}, total: ${total}`);
+            }
           };
           
           // 초기 설정
@@ -1060,13 +1065,14 @@ export interface EffectSettings {
           // 슬라이드 변경 시 업데이트
           swiper.on('slideChange', updatePagination);
         } else if (props.paginationType === 'bullets') {
-          // bullets 타입의 경우 수동으로 bullets 생성
+          // bullets 타입의 경우 수동으로 bullets 생성 - cards effect 순서 문제 해결
           const renderBullets = () => {
-            const total = swiper.slides.length;
-            const current = swiper.activeIndex;
+            // cards 효과에서는 실제 데이터 슬라이드 개수를 사용
+            const total = props.slides?.length || swiper.slides.length;
+            const current = swiper.realIndex; // activeIndex 대신 realIndex 사용
             
             if (props.debug) {
-              console.log(`[${swiperId.value}] Bullets render - activeIndex: ${current}, realIndex: ${swiper.realIndex}, total: ${total}`);
+              console.log(`[${swiperId.value}] Bullets render - activeIndex: ${swiper.activeIndex}, realIndex: ${current}, total: ${total}, slides data: ${props.slides?.length}`);
             }
             
             let bulletsHTML = '';
@@ -1088,20 +1094,26 @@ export interface EffectSettings {
                 e.stopPropagation();
                 
                 if (props.debug) {
-                  console.log(`[${swiperId.value}] Bullet clicked: ${index}, current: ${swiper.activeIndex}`);
+                  console.log(`[${swiperId.value}] Bullet clicked: ${index}, current realIndex: ${swiper.realIndex}, activeIndex: ${swiper.activeIndex}`);
                 }
                 
-                // 이미 같은 슬라이드면 무시
-                if (index === swiper.activeIndex) {
+                // 이미 같은 슬라이드면 무시 (realIndex 기준으로 비교)
+                if (index === swiper.realIndex) {
                   return;
                 }
                 
-                // loop이 비활성화된 경우 직접 이동
-                if (!props.loop) {
+                // cards effect에서는 realIndex로 이동
+                if (props.effect === 'cards') {
+                  // realIndex 기준으로 이동
+                  console.log('cards effect 이동::',index);
                   swiper.slideTo(index, 300);
                 } else {
-                  // loop이 활성화된 경우 실제 슬라이드로 이동
-                  swiper.slideToLoop(index, 300);
+                  // 다른 효과들은 기존 로직 사용
+                  if (!props.loop) {
+                    swiper.slideTo(index, 300);
+                  } else {
+                    swiper.slideToLoop(index, 300);
+                  }
                 }
               });
             });
@@ -1117,12 +1129,18 @@ export interface EffectSettings {
             console.log(`[SCSwiper ${swiperId.value}] Manual bullets rendered`);
           }
         } else if (props.paginationType === 'progressbar') {
-          // progressbar 타입 수동 구현
+          // progressbar 타입 수동 구현 - cards effect 지원
           const renderProgressbar = () => {
-            const progress = (swiper.realIndex + 1) / swiper.slides.length * 100;
+            // cards 효과에서는 실제 데이터 슬라이드 개수 사용
+            const total = props.slides?.length || swiper.slides.length;
+            const progress = (swiper.realIndex + 1) / total * 100;
             paginationEl.innerHTML = `
               <span class="swiper-pagination-progressbar-fill" style="transform: translateX(${progress - 100}%);"></span>
             `;
+            
+            if (props.debug) {
+              console.log(`[${swiperId.value}] Progressbar updated - realIndex: ${swiper.realIndex}, progress: ${progress}%, total: ${total}`);
+            }
           };
           
           // 초기 렌더링
@@ -1135,10 +1153,11 @@ export interface EffectSettings {
             console.log(`[SCSwiper ${swiperId.value}] Manual progressbar rendered`);
           }
         } else if (props.paginationType === 'custom') {
-          // custom 타입의 경우 사용자 정의 렌더링
+          // custom 타입의 경우 사용자 정의 렌더링 - cards effect 지원
           const renderCustomPagination = () => {
             const current = swiper.realIndex + 1;
-            const total = swiper.slides.length;
+            // cards 효과에서는 실제 데이터 슬라이드 개수 사용
+            const total = props.slides?.length || swiper.slides.length;
             paginationEl.innerHTML = `
               <div style="display: flex; gap: 8px; align-items: center;">
                 <span style="background: #007aff; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
@@ -1150,6 +1169,10 @@ export interface EffectSettings {
                 </span>
               </div>
             `;
+            
+            if (props.debug) {
+              console.log(`[${swiperId.value}] Custom pagination updated - realIndex: ${swiper.realIndex}, current: ${current}, total: ${total}`);
+            }
           };
           
           // 초기 설정
@@ -1608,6 +1631,26 @@ export interface EffectSettings {
   
   /* Cards Effect 전용 스타일 */
   :deep(.swiper-cards) .swiper-slide {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    width: 240px; /* Adjust width as needed */
+    height: 280px; /* Adjust height as needed */
+  }
+
+  /* Additional styling for a more distinct card look */
+  :deep(.swiper-cards) .swiper-slide:nth-child(odd) {
+    background-color: #f0f0f0;
+  }
+  :deep(.swiper-cards) .swiper-slide:nth-child(even) {
+    background-color: #ffffff;
+  }
+  /* :deep(.swiper-cards) .swiper-slide {
     border-radius: 18px !important;
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2) !important;
     background: linear-gradient(45deg, #667eea 0%, #764ba2 100%) !important;
@@ -1621,7 +1664,7 @@ export interface EffectSettings {
 
   :deep(.swiper-cards) .swiper-slide-shadow-cards {
     background: rgba(0, 0, 0, 0.3) !important;
-  }
+  } */
 
   /* Creative Effect 전용 스타일 */
   :deep(.swiper-creative) .swiper-slide {
