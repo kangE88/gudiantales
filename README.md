@@ -1843,137 +1843,114 @@ export interface EffectSettings {
 
 
 -----variantes
-
-
-/**
- * Variant Props 타입 정의 (class-variance-authority 대신 자체 구현)
- */
-export interface SwiperVariantProps {
-  size?: 'small' | 'medium' | 'large' | 'xlarge';
-  theme?: 'default' | 'dark' | 'light' | 'minimal' | 'colorful';
-  effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip' | 'cards' | 'creative' | 'cylinder';
-  direction?: 'horizontal' | 'vertical';
-  navigationStyle?: 'default' | 'arrows' | 'minimal' | 'rounded' | 'square';
-  paginationStyle?: 'default' | 'minimal' | 'rounded' | 'line' | 'fraction';
-  state?: 'normal' | 'loading' | 'error' | 'empty';
-  spacing?: 'none' | 'tight' | 'normal' | 'loose' | 'wide';
-}
+import { cva, type VariantProps } from 'class-variance-authority';
 
 /**
  * Swiper 컴포넌트의 스타일 variants 정의
- * @description CSS 클래스 생성을 위한 variant 스타일 정의
+ * @description class-variance-authority를 사용한 variant 스타일 정의
  */
-export const SwiperVariants = (props: SwiperVariantProps = {}) => {
-  const baseClass = "sc-swiper-container";
-  
-  const classes = [baseClass];
-  
-  // 각 variant별 클래스 추가
-  const {
-    size = 'medium',
-    theme = 'default',
-    effect = 'slide',
-    direction = 'horizontal',
-    navigationStyle = 'default',
-    paginationStyle = 'default',
-    state = 'normal',
-    spacing = 'normal'
-  } = props;
-
-  // 크기 variants
-  if (size === 'small') classes.push("sc-swiper--size-small");
-  if (size === 'medium') classes.push("sc-swiper--size-medium");
-  if (size === 'large') classes.push("sc-swiper--size-large");
-  if (size === 'xlarge') classes.push("sc-swiper--size-xlarge");
-
-  // 테마 variants
-  if (theme === 'default') classes.push("sc-swiper--theme-default");
-  if (theme === 'dark') classes.push("sc-swiper--theme-dark");
-  if (theme === 'light') classes.push("sc-swiper--theme-light");
-  if (theme === 'minimal') classes.push("sc-swiper--theme-minimal");
-  if (theme === 'colorful') classes.push("sc-swiper--theme-colorful");
-
-  // 전환 효과 variants
-  if (effect === 'slide') classes.push("sc-swiper--effect-slide");
-  if (effect === 'fade') classes.push("sc-swiper--effect-fade");
-  if (effect === 'cube') classes.push("sc-swiper--effect-cube");
-  if (effect === 'coverflow') classes.push("sc-swiper--effect-coverflow");
-  if (effect === 'flip') classes.push("sc-swiper--effect-flip");
-  if (effect === 'cards') classes.push("sc-swiper--effect-cards");
-  if (effect === 'creative') classes.push("sc-swiper--effect-creative");
-  if (effect === 'cylinder') classes.push("sc-swiper--effect-cylinder");
-
-  // 방향 variants
-  if (direction === 'horizontal') classes.push("sc-swiper--direction-horizontal");
-  if (direction === 'vertical') classes.push("sc-swiper--direction-vertical");
-
-  // 네비게이션 스타일 variants
-  if (navigationStyle === 'default') classes.push("sc-swiper--nav-default");
-  if (navigationStyle === 'arrows') classes.push("sc-swiper--nav-arrows");
-  if (navigationStyle === 'minimal') classes.push("sc-swiper--nav-minimal");
-  if (navigationStyle === 'rounded') classes.push("sc-swiper--nav-rounded");
-  if (navigationStyle === 'square') classes.push("sc-swiper--nav-square");
-
-  // 페이지네이션 스타일 variants
-  if (paginationStyle === 'default') classes.push("sc-swiper--pagination-default");
-  if (paginationStyle === 'minimal') classes.push("sc-swiper--pagination-minimal");
-  if (paginationStyle === 'rounded') classes.push("sc-swiper--pagination-rounded");
-  if (paginationStyle === 'line') classes.push("sc-swiper--pagination-line");
-  if (paginationStyle === 'fraction') classes.push("sc-swiper--pagination-fraction");
-
-  // 상태 variants
-  if (state === 'normal') classes.push("sc-swiper--state-normal");
-  if (state === 'loading') classes.push("sc-swiper--state-loading");
-  if (state === 'error') classes.push("sc-swiper--state-error");
-  if (state === 'empty') classes.push("sc-swiper--state-empty");
-
-  // 간격 variants
-  if (spacing === 'none') classes.push("sc-swiper--spacing-none");
-  if (spacing === 'tight') classes.push("sc-swiper--spacing-tight");
-  if (spacing === 'normal') classes.push("sc-swiper--spacing-normal");
-  if (spacing === 'loose') classes.push("sc-swiper--spacing-loose");
-  if (spacing === 'wide') classes.push("sc-swiper--spacing-wide");
-
-  // 복합 variants (조건부 클래스)
-  // 3D 효과들은 특별한 컨테이너 설정 필요
-  if (['cube', 'coverflow', 'flip', 'cards', 'creative', 'cylinder'].includes(effect)) {
-    classes.push("sc-swiper--3d-container");
+export const SwiperVariants = cva(
+  "sc-swiper-container", // base class
+  {
+    variants: {
+      size: {
+        small: "sc-swiper--size-small",
+        medium: "sc-swiper--size-medium",
+        large: "sc-swiper--size-large",
+        xlarge: "sc-swiper--size-xlarge",
+      },
+      theme: {
+        default: "sc-swiper--theme-default",
+        dark: "sc-swiper--theme-dark",
+        light: "sc-swiper--theme-light",
+        minimal: "sc-swiper--theme-minimal",
+        colorful: "sc-swiper--theme-colorful",
+      },
+      effect: {
+        slide: "sc-swiper--effect-slide",
+        fade: "sc-swiper--effect-fade",
+        cube: ["sc-swiper--effect-cube", "sc-swiper--3d-container"],
+        coverflow: ["sc-swiper--effect-coverflow", "sc-swiper--3d-container"],
+        flip: ["sc-swiper--effect-flip", "sc-swiper--3d-container"],
+        cards: ["sc-swiper--effect-cards", "sc-swiper--3d-container"],
+        creative: ["sc-swiper--effect-creative", "sc-swiper--3d-container"],
+        cylinder: ["sc-swiper--effect-cylinder", "sc-swiper--3d-container", "sc-swiper--cylinder-enhanced"],
+      },
+      direction: {
+        horizontal: "sc-swiper--direction-horizontal",
+        vertical: "sc-swiper--direction-vertical",
+      },
+      navigationStyle: {
+        default: "sc-swiper--nav-default",
+        arrows: "sc-swiper--nav-arrows",
+        minimal: "sc-swiper--nav-minimal",
+        rounded: "sc-swiper--nav-rounded",
+        square: "sc-swiper--nav-square",
+      },
+      paginationStyle: {
+        default: "sc-swiper--pagination-default",
+        minimal: "sc-swiper--pagination-minimal",
+        rounded: "sc-swiper--pagination-rounded",
+        line: "sc-swiper--pagination-line",
+        fraction: "sc-swiper--pagination-fraction",
+      },
+      state: {
+        normal: "sc-swiper--state-normal",
+        loading: ["sc-swiper--state-loading", "sc-swiper--no-interaction"],
+        error: "sc-swiper--state-error",
+        empty: "sc-swiper--state-empty",
+      },
+      spacing: {
+        none: "sc-swiper--spacing-none",
+        tight: "sc-swiper--spacing-tight",
+        normal: "sc-swiper--spacing-normal",
+        loose: "sc-swiper--spacing-loose",
+        wide: "sc-swiper--spacing-wide",
+      },
+    },
+    compoundVariants: [
+      // 다크 테마 + 미니멀 네비게이션
+      {
+        theme: "dark",
+        navigationStyle: "minimal",
+        class: "sc-swiper--dark-minimal-nav",
+      },
+      // 대형 크기 + 세로 방향
+      {
+        size: ["large", "xlarge"],
+        direction: "vertical",
+        class: "sc-swiper--large-vertical",
+      },
+    ],
+    defaultVariants: {
+      size: "medium",
+      theme: "default",
+      effect: "slide",
+      direction: "horizontal",
+      navigationStyle: "default",
+      paginationStyle: "default",
+      state: "normal",
+      spacing: "normal",
+    },
   }
-
-  // 다크 테마 + 미니멀 네비게이션
-  if (theme === 'dark' && navigationStyle === 'minimal') {
-    classes.push("sc-swiper--dark-minimal-nav");
-  }
-
-  // 대형 크기 + 세로 방향
-  if (['large', 'xlarge'].includes(size) && direction === 'vertical') {
-    classes.push("sc-swiper--large-vertical");
-  }
-
-  // Cylinder 효과는 특별한 설정 필요
-  if (effect === 'cylinder') {
-    classes.push("sc-swiper--cylinder-enhanced");
-  }
-
-  // 로딩 상태에서는 인터랙션 비활성화
-  if (state === 'loading') {
-    classes.push("sc-swiper--no-interaction");
-  }
-
-  return classes.join(' ');
-};
+);
 
 /**
- * 개별 variant 타입들
+ * CVA에서 생성된 variant props 타입
  */
-export type SwiperSize = 'small' | 'medium' | 'large' | 'xlarge';
-export type SwiperTheme = 'default' | 'dark' | 'light' | 'minimal' | 'colorful';
-export type SwiperEffect = 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip' | 'cards' | 'creative' | 'cylinder';
-export type SwiperDirection = 'horizontal' | 'vertical';
-export type SwiperNavigationStyle = 'default' | 'arrows' | 'minimal' | 'rounded' | 'square';
-export type SwiperPaginationStyle = 'default' | 'minimal' | 'rounded' | 'line' | 'fraction';
-export type SwiperState = 'normal' | 'loading' | 'error' | 'empty';
-export type SwiperSpacing = 'none' | 'tight' | 'normal' | 'loose' | 'wide';
+export type SwiperVariantProps = VariantProps<typeof SwiperVariants>;
+
+/**
+ * 개별 variant 타입들 (CVA 호환)
+ */
+export type SwiperSize = NonNullable<SwiperVariantProps['size']>;
+export type SwiperTheme = NonNullable<SwiperVariantProps['theme']>;
+export type SwiperEffect = NonNullable<SwiperVariantProps['effect']>;
+export type SwiperDirection = NonNullable<SwiperVariantProps['direction']>;
+export type SwiperNavigationStyle = NonNullable<SwiperVariantProps['navigationStyle']>;
+export type SwiperPaginationStyle = NonNullable<SwiperVariantProps['paginationStyle']>;
+export type SwiperState = NonNullable<SwiperVariantProps['state']>;
+export type SwiperSpacing = NonNullable<SwiperVariantProps['spacing']>;
 
 /**
  * 효과별 권장 설정
@@ -2057,7 +2034,6 @@ export const themeColors = {
     text: '#2c3e50',
   },
 } as const;
-
 
 
 ----storybook
