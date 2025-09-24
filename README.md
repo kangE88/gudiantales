@@ -59,23 +59,23 @@
     <!-- Navigation -->
     <div
       v-if="shouldShowNavigation"
-      class="swiper-button-prev"
+      :class="props.direction === 'vertical' ? 'swiper-button-prev-vertical' : 'swiper-button-prev'"
     ></div>
     <div
       v-if="shouldShowNavigation"
-      class="swiper-button-next"
+      :class="props.direction === 'vertical' ? 'swiper-button-next-vertical' : 'swiper-button-next'"
     ></div>
 
     <!-- Pagination -->
     <div
       v-if="shouldShowPagination"
-      class="swiper-pagination"
+      :class="props.direction === 'vertical' ? 'swiper-pagination-vertical' : 'swiper-pagination'"
     ></div>
 
     <!-- Scrollbar -->
     <div
       v-if="shouldShowScrollbar"
-      class="swiper-scrollbar"
+      :class="props.direction === 'vertical' ? 'swiper-scrollbar-vertical' : 'swiper-scrollbar'"
     ></div>
   </div>
 </template>
@@ -267,7 +267,8 @@ const containerClasses = computed(() => {
   const baseClass = "sc-swiper-container";
   const sizeClass = `sc-swiper--${props.size}`;
   const themeClass = `sc-swiper--${props.theme}`;
-  return [baseClass, sizeClass, themeClass];
+  const directionClass = props.direction === "vertical" ? "sc-swiper--vertical" : "";
+  return [baseClass, sizeClass, themeClass, directionClass];
 });
 
 const shouldShowNavigation = computed(() => props.navigation !== false);
@@ -303,6 +304,12 @@ const navigationConfig = computed(() => {
     nextEl: `.sc-swiper-${swiperId.value} .swiper-button-next`,
   };
 
+  // Vertical direction일 때 navigation 방향 조정
+  if (props.direction === "vertical") {
+    config.prevEl = `.sc-swiper-${swiperId.value} .swiper-button-prev-vertical`;
+    config.nextEl = `.sc-swiper-${swiperId.value} .swiper-button-next-vertical`;
+  }
+
   return typeof props.navigation === "object" ? { ...config, ...props.navigation } : config;
 });
 
@@ -316,6 +323,11 @@ const paginationConfig = computed(() => {
       props.paginationType || (typeof props.pagination === "string" ? props.pagination : "bullets"),
   };
 
+  // Vertical direction일 때 pagination 위치 조정
+  if (props.direction === "vertical") {
+    config.el = `.sc-swiper-${swiperId.value} .swiper-pagination-vertical`;
+  }
+
   return typeof props.pagination === "object" ? { ...config, ...props.pagination } : config;
 });
 
@@ -326,6 +338,11 @@ const scrollbarConfig = computed(() => {
     el: `.sc-swiper-${swiperId.value} .swiper-scrollbar`,
     draggable: true,
   };
+
+  // Vertical direction일 때 scrollbar 위치 조정
+  if (props.direction === "vertical") {
+    config.el = `.sc-swiper-${swiperId.value} .swiper-scrollbar-vertical`;
+  }
 
   return typeof props.scrollbar === "object" ? { ...config, ...props.scrollbar } : config;
 });
@@ -343,6 +360,17 @@ const autoplayConfig = computed(() => {
 
 // Effect에 따른 slidesPerView 조정
 const adjustedSlidesPerView = computed(() => {
+  // Vertical direction일 때 특정 effects는 지원하지 않음
+  if (props.direction === "vertical") {
+    // Vertical에서는 slide와 fade만 지원
+    if (!["slide", "fade"].includes(props.effect || "")) {
+      console.warn(
+        `Vertical direction doesn't support ${props.effect} effect. Falling back to slide effect.`
+      );
+      return 1;
+    }
+  }
+
   // Cube, Fade, Flip, Cards, Creative effect는 slidesPerView가 1이어야 함
   if (["cube", "fade", "flip", "cards", "creative"].includes(props.effect || "")) {
     return 1;
@@ -370,8 +398,14 @@ const adjustedCenteredSlides = computed(() => {
   return props.centeredSlides;
 });
 
-// Effect 이름 조정 (cylinder는 coverflow로 변환)
+// Effect 이름 조정 (cylinder는 coverflow로 변환, vertical direction 제한)
 const adjustedEffect = computed(() => {
+  // Vertical direction일 때 slide와 fade만 지원
+  if (props.direction === "vertical") {
+    if (!["slide", "fade"].includes(props.effect || "")) {
+      return "slide";
+    }
+  }
   return props.effect === "cylinder" ? "coverflow" : props.effect;
 });
 
@@ -389,6 +423,11 @@ const effectProps = computed(() => {
 // ============================================================================
 const onSwiperInit = (swiper: any) => {
   emit("init", swiper);
+
+  // Vertical direction일 때 navigation 버튼 위치 강제 조정
+  if (props.direction === "vertical") {
+    setTimeout(adjustVerticalNavigationButtons, 100);
+  }
 };
 
 const onSlideChange = (swiper: any) => {
@@ -455,8 +494,78 @@ const onSlideClick = (swiper: any, event: Event) => {
 // ============================================================================
 // LIFECYCLE
 // ============================================================================
+const adjustVerticalNavigationButtons = () => {
+  if (props.direction === "vertical") {
+    const prevButton = document.querySelector(
+      `.sc-swiper-${swiperId.value} .swiper-button-prev-vertical`
+    );
+    const nextButton = document.querySelector(
+      `.sc-swiper-${swiperId.value} .swiper-button-next-vertical`
+    );
+
+    const isMobile = window.innerWidth <= 768;
+    const topPosition = isMobile ? "-50px" : "-60px";
+    const bottomPosition = isMobile ? "-50px" : "-60px";
+
+    if (prevButton) {
+      (prevButton as HTMLElement).style.left = "50%";
+      (prevButton as HTMLElement).style.top = topPosition;
+      (prevButton as HTMLElement).style.right = "auto";
+      (prevButton as HTMLElement).style.bottom = "auto";
+      (prevButton as HTMLElement).style.transform = "translateX(-50%)";
+      (prevButton as HTMLElement).style.display = "block";
+      (prevButton as HTMLElement).style.visibility = "visible";
+      (prevButton as HTMLElement).style.opacity = "1";
+    }
+
+    if (nextButton) {
+      (nextButton as HTMLElement).style.left = "50%";
+      (nextButton as HTMLElement).style.bottom = bottomPosition;
+      (nextButton as HTMLElement).style.right = "auto";
+      (nextButton as HTMLElement).style.top = "auto";
+      (nextButton as HTMLElement).style.transform = "translateX(-50%)";
+      (nextButton as HTMLElement).style.display = "block";
+      (nextButton as HTMLElement).style.visibility = "visible";
+      (nextButton as HTMLElement).style.opacity = "1";
+    }
+  }
+};
+
 onMounted(() => {
   // String selector 사용으로 DOM 참조 문제가 해결되어 별도 초기화 불필요
+
+  // Vertical direction일 때 MutationObserver로 버튼 위치 지속적 조정
+  if (props.direction === "vertical") {
+    const container = document.querySelector(`.sc-swiper-${swiperId.value}`);
+    if (container) {
+      const observer = new MutationObserver(() => {
+        adjustVerticalNavigationButtons();
+      });
+
+      observer.observe(container, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
+
+      // 윈도우 리사이즈 이벤트 추가
+      const handleResize = () => {
+        adjustVerticalNavigationButtons();
+      };
+
+      window.addEventListener("resize", handleResize);
+
+      // 컴포넌트 언마운트 시 observer와 이벤트 리스너 정리
+      onUnmounted(() => {
+        observer.disconnect();
+        window.removeEventListener("resize", handleResize);
+      });
+    }
+
+    // 초기 조정
+    setTimeout(adjustVerticalNavigationButtons, 100);
+  }
 });
 
 // 컴포넌트 언마운트 시 타임아웃 정리
@@ -491,6 +600,140 @@ defineExpose({
 .sc-swiper-container .swiper {
   width: 100%;
   height: 100%;
+}
+
+/* ============================================================================
+   Vertical Direction 스타일
+   ============================================================================ */
+.sc-swiper--vertical {
+  height: 500px; /* 기본 높이 설정 */
+  padding: 60px 0; /* 상하 패딩으로 navigation 버튼 공간 확보 */
+}
+
+.sc-swiper--vertical .swiper {
+  height: 100%;
+}
+
+/* Vertical Navigation 버튼 스타일 - 더 강력한 선택자 사용 */
+.sc-swiper--vertical :deep(.swiper-button-prev-vertical),
+.sc-swiper--vertical :deep(.swiper-button-next-vertical) {
+  color: #007aff !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.3s ease !important;
+  z-index: 10 !important;
+  margin: 0 !important;
+  position: absolute !important;
+}
+
+/* Swiper 기본 스타일 완전 덮어쓰기 */
+.sc-swiper--vertical :deep(.swiper-button-prev-vertical.swiper-button-disabled),
+.sc-swiper--vertical :deep(.swiper-button-next-vertical.swiper-button-disabled) {
+  opacity: 0.3 !important;
+}
+
+/* 전역 스타일로 Swiper 기본 위치 완전 덮어쓰기 */
+:deep(.swiper-button-prev-vertical) {
+  left: 50% !important;
+  top: -60px !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+:deep(.swiper-button-next-vertical) {
+  left: 50% !important;
+  bottom: -60px !important;
+  right: auto !important;
+  top: auto !important;
+  transform: translateX(-50%) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.sc-swiper--vertical :deep(.swiper-button-prev-vertical) {
+  left: 50% !important;
+  top: -60px !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+}
+
+.sc-swiper--vertical :deep(.swiper-button-next-vertical) {
+  left: 50% !important;
+  bottom: -60px !important;
+  right: auto !important;
+  top: auto !important;
+  transform: translateX(-50%) !important;
+}
+
+.sc-swiper--vertical :deep(.swiper-button-prev-vertical:hover),
+.sc-swiper--vertical :deep(.swiper-button-next-vertical:hover) {
+  background: rgba(255, 255, 255, 1) !important;
+  transform: translateX(-50%) scale(1.1) !important;
+}
+
+.sc-swiper--vertical :deep(.swiper-button-prev-vertical::after),
+.sc-swiper--vertical :deep(.swiper-button-next-vertical::after) {
+  font-size: 16px !important;
+  font-weight: bold !important;
+}
+
+.sc-swiper--vertical :deep(.swiper-button-prev-vertical::after) {
+  content: "↑" !important;
+}
+
+.sc-swiper--vertical :deep(.swiper-button-next-vertical::after) {
+  content: "↓" !important;
+}
+
+/* Vertical Pagination 스타일 */
+:deep(.swiper-pagination-vertical) {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: auto !important;
+  height: auto !important;
+  z-index: 10 !important;
+}
+
+:deep(.swiper-pagination-vertical .swiper-pagination-bullet) {
+  display: block !important;
+  margin: 8px 0 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  opacity: 1 !important;
+  transition: all 0.3s ease !important;
+}
+
+:deep(.swiper-pagination-vertical .swiper-pagination-bullet-active) {
+  background: #007aff !important;
+  transform: scale(1.2) !important;
+}
+
+/* Vertical Scrollbar 스타일 */
+:deep(.swiper-scrollbar-vertical) {
+  position: absolute !important;
+  right: 3px !important;
+  top: 1% !important;
+  z-index: 50 !important;
+  width: 5px !important;
+  height: 98% !important;
+}
+
+:deep(.swiper-scrollbar-vertical .swiper-scrollbar-drag) {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-radius: 10px !important;
+  position: relative !important;
+  left: 0 !important;
+  top: 0 !important;
 }
 
 /* ============================================================================
@@ -1062,8 +1305,48 @@ defineExpose({
     max-width: 120px !important;
     max-height: 120px !important;
   }
+
+  /* Vertical Direction 모바일 조정 */
+  .sc-swiper--vertical {
+    height: 300px;
+    padding: 50px 0; /* 모바일에서 패딩 조정 */
+  }
+
+  .sc-swiper--vertical :deep(.swiper-button-prev-vertical),
+  .sc-swiper--vertical :deep(.swiper-button-next-vertical) {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .sc-swiper--vertical :deep(.swiper-button-prev-vertical) {
+    top: -50px !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+  }
+
+  .sc-swiper--vertical :deep(.swiper-button-next-vertical) {
+    bottom: -50px !important;
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+  }
+
+  .sc-swiper--vertical :deep(.swiper-button-prev-vertical::after),
+  .sc-swiper--vertical :deep(.swiper-button-next-vertical::after) {
+    font-size: 14px !important;
+  }
+
+  :deep(.swiper-pagination-vertical) {
+    right: 5px !important;
+  }
+
+  :deep(.swiper-pagination-vertical .swiper-pagination-bullet) {
+    margin: 6px 0 !important;
+  }
 }
 </style>
+
 
 \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 StoryBook
@@ -1878,7 +2161,10 @@ meta:
     <div class="example-section">
       <h2 class="example-title">4. Coverflow Effect</h2>
       <p class="example-description">3D 커버플로우 스타일</p>
-      <div class="swiper-container">
+      <div
+        class="swiper-container"
+        style="height: 500px"
+      >
         <ScSwiper
           swiper-id="coverflow-example"
           :slides="coverflowExampleData"
@@ -2070,6 +2356,50 @@ meta:
         </ScSwiper>
       </div>
     </div>
+
+    <!-- Example 9: Vertical Direction -->
+    <div class="example-section">
+      <h2 class="example-title">9. Vertical Direction</h2>
+      <p class="example-description">세로 방향 스와이프 (slide와 fade 효과만 지원)</p>
+      <div class="swiper-container swiper-container--vertical">
+        <ScSwiper
+          swiper-id="vertical-example"
+          :slides="verticalExampleData"
+          effect="slide"
+          direction="vertical"
+          :slidesPerView="1"
+          :spaceBetween="20"
+          :centeredSlides="false"
+          :pagination="true"
+          paginationType="bullets"
+          :navigation="true"
+          :loop="false"
+          size="large"
+          theme="default"
+          :speed="400"
+          @slide-click="onSlideClick"
+          @slide-double-click="onSlideDoubleClick"
+        >
+          <template #slide="{ item, index }">
+            <div
+              class="example-slide clickable-slide"
+              :style="{ background: item.background }"
+            >
+              <div class="slide-content">
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.subtitle }}</p>
+                <span class="slide-number">{{ index + 1 }}</span>
+                <img
+                  v-if="item.image"
+                  :src="item.image"
+                  :alt="item.title || `Slide ${index + 1}`"
+                />
+              </div>
+            </div>
+          </template>
+        </ScSwiper>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -2126,14 +2456,14 @@ const slideExampleData = ref<SlideData[]>([
     title: "첫 번째 슬라이드",
     subtitle: "기본 슬라이딩 효과",
     background: "linear-gradient(45deg, #667eea, #764ba2)",
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/100",
   },
   {
     id: "slide-2",
     title: "두 번째 슬라이드",
     subtitle: "좌우 이동 전환",
     background: "linear-gradient(45deg, #f093fb, #f5576c)",
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/200",
   },
   {
     id: "slide-3",
@@ -2176,21 +2506,21 @@ const cubeExampleData = ref<SlideData[]>([
     title: "큐브 회전",
     subtitle: "3D 정육면체",
     background: "linear-gradient(45deg, #fa709a, #fee140)",
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/100",
   },
   {
     id: "cube-2",
     title: "입체 전환",
     subtitle: "공간감 있는 이동",
     background: "linear-gradient(45deg, #a8edea, #fed6e3)",
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/200",
   },
   {
     id: "cube-3",
     title: "회전 효과",
     subtitle: "역동적인 움직임",
     background: "linear-gradient(45deg, #ffecd2, #fcb69f)",
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/400",
   },
 ]);
 
@@ -2321,6 +2651,38 @@ const cylinderExampleData = ref<SlideData[]>([
     background: "linear-gradient(45deg, #667eea, #764ba2)",
   },
 ]);
+
+// 9. Vertical Direction Data
+const verticalExampleData = ref<SlideData[]>([
+  {
+    id: "vertical-1",
+    title: "세로 스와이프 1",
+    subtitle: "위아래 이동",
+    background: "linear-gradient(180deg, #667eea, #764ba2)",
+    image: "https://picsum.photos/200/300",
+  },
+  {
+    id: "vertical-2",
+    title: "세로 스와이프 2",
+    subtitle: "수직 방향 전환",
+    background: "linear-gradient(180deg, #f093fb, #f5576c)",
+    image: "https://picsum.photos/200/300",
+  },
+  {
+    id: "vertical-3",
+    title: "세로 스와이프 3",
+    subtitle: "세로 슬라이딩",
+    background: "linear-gradient(180deg, #4facfe, #00f2fe)",
+    image: "https://picsum.photos/200/300",
+  },
+  {
+    id: "vertical-4",
+    title: "세로 스와이프 4",
+    subtitle: "수직 스크롤",
+    background: "linear-gradient(180deg, #fa709a, #fee140)",
+    image: "https://picsum.photos/200/300",
+  },
+]);
 </script>
 
 <style scoped>
@@ -2383,6 +2745,11 @@ const cylinderExampleData = ref<SlideData[]>([
   position: relative;
 }
 
+/* Vertical Direction Container */
+.swiper-container--vertical {
+  height: 450px; /* navigation 버튼 공간을 고려한 높이 조정 */
+}
+
 /* 클릭 가능한 슬라이드 스타일 */
 .clickable-slide {
   cursor: pointer;
@@ -2416,9 +2783,12 @@ const cylinderExampleData = ref<SlideData[]>([
   .swiper-container {
     height: 280px;
   }
+
+  .swiper-container--vertical {
+    height: 400px; /* 모바일에서 navigation 버튼 공간을 고려한 높이 조정 */
+  }
 }
 </style>
-
 
 
 
