@@ -1838,3 +1838,954 @@ export interface EffectSettings {
   }
 }
 </style>
+
+
+
+
+-----variantes
+
+
+/**
+ * Variant Props 타입 정의 (class-variance-authority 대신 자체 구현)
+ */
+export interface SwiperVariantProps {
+  size?: 'small' | 'medium' | 'large' | 'xlarge';
+  theme?: 'default' | 'dark' | 'light' | 'minimal' | 'colorful';
+  effect?: 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip' | 'cards' | 'creative' | 'cylinder';
+  direction?: 'horizontal' | 'vertical';
+  navigationStyle?: 'default' | 'arrows' | 'minimal' | 'rounded' | 'square';
+  paginationStyle?: 'default' | 'minimal' | 'rounded' | 'line' | 'fraction';
+  state?: 'normal' | 'loading' | 'error' | 'empty';
+  spacing?: 'none' | 'tight' | 'normal' | 'loose' | 'wide';
+}
+
+/**
+ * Swiper 컴포넌트의 스타일 variants 정의
+ * @description CSS 클래스 생성을 위한 variant 스타일 정의
+ */
+export const SwiperVariants = (props: SwiperVariantProps = {}) => {
+  const baseClass = "sc-swiper-container";
+  
+  const classes = [baseClass];
+  
+  // 각 variant별 클래스 추가
+  const {
+    size = 'medium',
+    theme = 'default',
+    effect = 'slide',
+    direction = 'horizontal',
+    navigationStyle = 'default',
+    paginationStyle = 'default',
+    state = 'normal',
+    spacing = 'normal'
+  } = props;
+
+  // 크기 variants
+  if (size === 'small') classes.push("sc-swiper--size-small");
+  if (size === 'medium') classes.push("sc-swiper--size-medium");
+  if (size === 'large') classes.push("sc-swiper--size-large");
+  if (size === 'xlarge') classes.push("sc-swiper--size-xlarge");
+
+  // 테마 variants
+  if (theme === 'default') classes.push("sc-swiper--theme-default");
+  if (theme === 'dark') classes.push("sc-swiper--theme-dark");
+  if (theme === 'light') classes.push("sc-swiper--theme-light");
+  if (theme === 'minimal') classes.push("sc-swiper--theme-minimal");
+  if (theme === 'colorful') classes.push("sc-swiper--theme-colorful");
+
+  // 전환 효과 variants
+  if (effect === 'slide') classes.push("sc-swiper--effect-slide");
+  if (effect === 'fade') classes.push("sc-swiper--effect-fade");
+  if (effect === 'cube') classes.push("sc-swiper--effect-cube");
+  if (effect === 'coverflow') classes.push("sc-swiper--effect-coverflow");
+  if (effect === 'flip') classes.push("sc-swiper--effect-flip");
+  if (effect === 'cards') classes.push("sc-swiper--effect-cards");
+  if (effect === 'creative') classes.push("sc-swiper--effect-creative");
+  if (effect === 'cylinder') classes.push("sc-swiper--effect-cylinder");
+
+  // 방향 variants
+  if (direction === 'horizontal') classes.push("sc-swiper--direction-horizontal");
+  if (direction === 'vertical') classes.push("sc-swiper--direction-vertical");
+
+  // 네비게이션 스타일 variants
+  if (navigationStyle === 'default') classes.push("sc-swiper--nav-default");
+  if (navigationStyle === 'arrows') classes.push("sc-swiper--nav-arrows");
+  if (navigationStyle === 'minimal') classes.push("sc-swiper--nav-minimal");
+  if (navigationStyle === 'rounded') classes.push("sc-swiper--nav-rounded");
+  if (navigationStyle === 'square') classes.push("sc-swiper--nav-square");
+
+  // 페이지네이션 스타일 variants
+  if (paginationStyle === 'default') classes.push("sc-swiper--pagination-default");
+  if (paginationStyle === 'minimal') classes.push("sc-swiper--pagination-minimal");
+  if (paginationStyle === 'rounded') classes.push("sc-swiper--pagination-rounded");
+  if (paginationStyle === 'line') classes.push("sc-swiper--pagination-line");
+  if (paginationStyle === 'fraction') classes.push("sc-swiper--pagination-fraction");
+
+  // 상태 variants
+  if (state === 'normal') classes.push("sc-swiper--state-normal");
+  if (state === 'loading') classes.push("sc-swiper--state-loading");
+  if (state === 'error') classes.push("sc-swiper--state-error");
+  if (state === 'empty') classes.push("sc-swiper--state-empty");
+
+  // 간격 variants
+  if (spacing === 'none') classes.push("sc-swiper--spacing-none");
+  if (spacing === 'tight') classes.push("sc-swiper--spacing-tight");
+  if (spacing === 'normal') classes.push("sc-swiper--spacing-normal");
+  if (spacing === 'loose') classes.push("sc-swiper--spacing-loose");
+  if (spacing === 'wide') classes.push("sc-swiper--spacing-wide");
+
+  // 복합 variants (조건부 클래스)
+  // 3D 효과들은 특별한 컨테이너 설정 필요
+  if (['cube', 'coverflow', 'flip', 'cards', 'creative', 'cylinder'].includes(effect)) {
+    classes.push("sc-swiper--3d-container");
+  }
+
+  // 다크 테마 + 미니멀 네비게이션
+  if (theme === 'dark' && navigationStyle === 'minimal') {
+    classes.push("sc-swiper--dark-minimal-nav");
+  }
+
+  // 대형 크기 + 세로 방향
+  if (['large', 'xlarge'].includes(size) && direction === 'vertical') {
+    classes.push("sc-swiper--large-vertical");
+  }
+
+  // Cylinder 효과는 특별한 설정 필요
+  if (effect === 'cylinder') {
+    classes.push("sc-swiper--cylinder-enhanced");
+  }
+
+  // 로딩 상태에서는 인터랙션 비활성화
+  if (state === 'loading') {
+    classes.push("sc-swiper--no-interaction");
+  }
+
+  return classes.join(' ');
+};
+
+/**
+ * 개별 variant 타입들
+ */
+export type SwiperSize = 'small' | 'medium' | 'large' | 'xlarge';
+export type SwiperTheme = 'default' | 'dark' | 'light' | 'minimal' | 'colorful';
+export type SwiperEffect = 'slide' | 'fade' | 'cube' | 'coverflow' | 'flip' | 'cards' | 'creative' | 'cylinder';
+export type SwiperDirection = 'horizontal' | 'vertical';
+export type SwiperNavigationStyle = 'default' | 'arrows' | 'minimal' | 'rounded' | 'square';
+export type SwiperPaginationStyle = 'default' | 'minimal' | 'rounded' | 'line' | 'fraction';
+export type SwiperState = 'normal' | 'loading' | 'error' | 'empty';
+export type SwiperSpacing = 'none' | 'tight' | 'normal' | 'loose' | 'wide';
+
+/**
+ * 효과별 권장 설정
+ * @description 각 효과에 최적화된 기본 설정값들
+ */
+export const effectRecommendations = {
+  slide: {
+    slidesPerView: 'auto' as const,
+    spaceBetween: 16,
+    centeredSlides: false,
+  },
+  fade: {
+    slidesPerView: 1,
+    spaceBetween: 0,
+    centeredSlides: false,
+  },
+  cube: {
+    slidesPerView: 1,
+    spaceBetween: 0,
+    centeredSlides: false,
+  },
+  coverflow: {
+    slidesPerView: 3,
+    spaceBetween: 0,
+    centeredSlides: true,
+  },
+  flip: {
+    slidesPerView: 1,
+    spaceBetween: 0,
+    centeredSlides: false,
+  },
+  cards: {
+    slidesPerView: 1,
+    spaceBetween: 0,
+    centeredSlides: false,
+  },
+  creative: {
+    slidesPerView: 1,
+    spaceBetween: 0,
+    centeredSlides: false,
+  },
+  cylinder: {
+    slidesPerView: 3,
+    spaceBetween: 0,
+    centeredSlides: true,
+  },
+} as const;
+
+/**
+ * 테마별 기본 색상 설정
+ */
+export const themeColors = {
+  default: {
+    primary: '#007aff',
+    secondary: '#6c757d',
+    background: '#ffffff',
+    text: '#333333',
+  },
+  dark: {
+    primary: '#0a84ff',
+    secondary: '#8e8e93',
+    background: '#1c1c1e',
+    text: '#ffffff',
+  },
+  light: {
+    primary: '#007aff',
+    secondary: '#999999',
+    background: '#f8f9fa',
+    text: '#212529',
+  },
+  minimal: {
+    primary: '#000000',
+    secondary: '#666666',
+    background: '#ffffff',
+    text: '#333333',
+  },
+  colorful: {
+    primary: '#ff6b6b',
+    secondary: '#4ecdc4',
+    background: '#fffbf0',
+    text: '#2c3e50',
+  },
+} as const;
+
+
+
+----storybook
+import type { Meta, StoryObj } from "@storybook/vue3";
+import SwiperComponent from "./swiper.vue";
+
+// Mock 슬라이드 데이터
+const mockSlides = [
+  {
+    id: 1,
+    title: "첫 번째 슬라이드",
+    description: "이것은 첫 번째 슬라이드입니다",
+    image: "https://picsum.photos/400/200?random=1",
+    category: "Nature",
+  },
+  {
+    id: 2, 
+    title: "두 번째 슬라이드",
+    description: "이것은 두 번째 슬라이드입니다",
+    image: "https://picsum.photos/400/200?random=2",
+    category: "Architecture",
+  },
+  {
+    id: 3,
+    title: "세 번째 슬라이드", 
+    description: "이것은 세 번째 슬라이드입니다",
+    image: "https://picsum.photos/400/200?random=3",
+    category: "Technology",
+  },
+  {
+    id: 4,
+    title: "네 번째 슬라이드",
+    description: "이것은 네 번째 슬라이드입니다", 
+    image: "https://picsum.photos/400/200?random=4",
+    category: "People",
+  },
+  {
+    id: 5,
+    title: "다섯 번째 슬라이드",
+    description: "이것은 다섯 번째 슬라이드입니다",
+    image: "https://picsum.photos/400/200?random=5", 
+    category: "Food",
+  },
+];
+
+const meta: Meta<typeof SwiperComponent> = {
+  title: "Components/Swiper",
+  component: SwiperComponent,
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component: `
+# Swiper 컴포넌트
+
+고급 슬라이드 기능을 제공하는 Vue 컴포넌트입니다.
+
+## 주요 기능
+- 🎯 다양한 전환 효과 (slide, fade, cube, coverflow, flip, cards, creative, cylinder)
+- 📱 터치/스와이프 지원  
+- ⚡ 자동재생 기능
+- 🎨 커스터마이징 가능한 네비게이션 및 페이지네이션
+- ♿ 접근성 지원
+- 📐 반응형 디자인
+- 🔄 무한 루프
+- 🎮 키보드 네비게이션
+        `,
+      },
+    },
+  },
+  args: {
+    slides: mockSlides,
+    pagination: true,
+    paginationType: "bullets", 
+    navigation: true,
+    loop: false,
+    slidesPerView: 1,
+    spaceBetween: 0,
+    centeredSlides: false,
+    direction: "horizontal",
+    speed: 300,
+    effect: "slide",
+    autoplay: false,
+    debug: false,
+  },
+  argTypes: {
+    // 전환 효과 설정
+    effect: {
+      control: "select",
+      options: ["slide", "fade", "cube", "coverflow", "flip", "cards", "creative", "cylinder"],
+      description: "슬라이드 전환 효과를 선택합니다",
+      table: {
+        type: { summary: "string" },
+        defaultValue: { summary: "slide" },
+      },
+    },
+    
+    // 페이지네이션 설정
+    pagination: {
+      control: "boolean",
+      description: "페이지네이션 표시 여부",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "true" },
+      },
+    },
+    
+    paginationType: {
+      control: "select", 
+      options: ["bullets", "fraction", "progressbar", "custom"],
+      description: "페이지네이션 표시 타입",
+      table: {
+        type: { summary: "string" },
+        defaultValue: { summary: "bullets" },
+      },
+    },
+    
+    // 네비게이션 설정
+    navigation: {
+      control: "boolean",
+      description: "이전/다음 네비게이션 버튼 표시 여부",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "true" },
+      },
+    },
+    
+    // 슬라이드 설정
+    slidesPerView: {
+      control: { type: "number", min: 1, max: 5, step: 1 },
+      description: "한 번에 보이는 슬라이드 개수",
+      table: {
+        type: { summary: "number | 'auto'" },
+        defaultValue: { summary: "1" },
+      },
+    },
+    
+    spaceBetween: {
+      control: { type: "range", min: 0, max: 50, step: 5 },
+      description: "슬라이드 간격 (픽셀)",
+      table: {
+        type: { summary: "number" },
+        defaultValue: { summary: "0" },
+      },
+    },
+    
+    // 동작 설정
+    speed: {
+      control: { type: "range", min: 100, max: 2000, step: 100 },
+      description: "전환 애니메이션 속도 (밀리초)",
+      table: {
+        type: { summary: "number" },
+        defaultValue: { summary: "300" },
+      },
+    },
+    
+    centeredSlides: {
+      control: "boolean",
+      description: "활성 슬라이드를 중앙에 배치",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    
+    loop: {
+      control: "boolean",
+      description: "무한 루프 활성화",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    
+    direction: {
+      control: "select",
+      options: ["horizontal", "vertical"],
+      description: "슬라이드 이동 방향",
+      table: {
+        type: { summary: "string" },
+        defaultValue: { summary: "horizontal" },
+      },
+    },
+    
+    // 자동재생 설정
+    autoplay: {
+      control: "boolean",
+      description: "자동재생 활성화",
+      table: {
+        type: { summary: "boolean | AutoplayConfig" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    
+    // 디버그 설정
+    debug: {
+      control: "boolean",
+      description: "개발 모드에서 디버그 정보 출력",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+// 기본 Swiper
+export const Default: Story = {
+  name: "기본 Swiper",
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <SwiperComponent v-bind="args">
+        <template #slide="{ item, index }">
+          <div class="story-slide">
+            <img :src="item.image" :alt="item.title" />
+            <div class="slide-content">
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.description }}</p>
+              <span class="slide-category">{{ item.category }}</span>
+            </div>
+          </div>
+        </template>
+      </SwiperComponent>
+    `,
+    styles: [`
+      <style scoped>
+      .story-slide {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .story-slide img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+      }
+      .slide-content {
+        padding: 20px;
+      }
+      .slide-content h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+      }
+      .slide-content p {
+        margin: 0 0 12px;
+        color: #666;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .slide-category {
+        display: inline-block;
+        background: #007aff;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      </style>
+    `],
+  }),
+};
+
+// 다중 슬라이드 보기
+export const MultipleSlides: Story = {
+  name: "다중 슬라이드",
+  args: {
+    slidesPerView: 3,
+    spaceBetween: 20,
+    centeredSlides: false,
+  },
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <SwiperComponent v-bind="args">
+        <template #slide="{ item, index }">
+          <div class="story-slide-multiple">
+            <div class="slide-number">{{ index + 1 }}</div>
+            <h4>{{ item.title }}</h4>
+            <p>{{ item.category }}</p>
+          </div>
+        </template>
+      </SwiperComponent>
+    `,
+    styles: [`
+      <style scoped>
+      .story-slide-multiple {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 150px;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        text-align: center;
+      }
+      .slide-number {
+        font-size: 32px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      .story-slide-multiple h4 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+      .story-slide-multiple p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.8;
+      }
+      </style>
+    `],
+  }),
+};
+
+// Fade 효과
+export const FadeEffect: Story = {
+  name: "Fade 전환 효과",
+  args: {
+    effect: "fade",
+    speed: 600,
+    autoplay: { delay: 3000 },
+  },
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <SwiperComponent v-bind="args">
+        <template #slide="{ item, index }">
+          <div 
+            class="story-slide-fade"
+            :style="{ background: getGradient(index) }"
+          >
+            <div class="fade-content">
+              <h2>{{ item.title }}</h2>
+              <p>{{ item.description }}</p>
+            </div>
+          </div>
+        </template>
+      </SwiperComponent>
+    `,
+    methods: {
+      getGradient(index: number) {
+        const gradients = [
+          "linear-gradient(135deg, #ff6b6b, #feca57)",
+          "linear-gradient(135deg, #4ecdc4, #44a08d)", 
+          "linear-gradient(135deg, #45b7d1, #96ceb4)",
+          "linear-gradient(135deg, #a8edea, #fed6e3)",
+          "linear-gradient(135deg, #ffecd2, #fcb69f)",
+        ];
+        return gradients[index % gradients.length];
+      },
+    },
+    styles: [`
+      <style scoped>
+      .story-slide-fade {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 300px;
+        border-radius: 16px;
+      }
+      .fade-content {
+        text-align: center;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+      .fade-content h2 {
+        margin: 0 0 16px;
+        font-size: 32px;
+        font-weight: 700;
+      }
+      .fade-content p {
+        margin: 0;
+        font-size: 18px;
+        opacity: 0.9;
+      }
+      </style>
+    `],
+  }),
+};
+
+// Coverflow 효과
+export const CoverflowEffect: Story = {
+  name: "Coverflow 3D 효과",
+  args: {
+    effect: "coverflow",
+    slidesPerView: 3,
+    centeredSlides: true,
+    spaceBetween: 0,
+    speed: 500,
+  },
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <SwiperComponent v-bind="args">
+        <template #slide="{ item, index }">
+          <div class="story-slide-coverflow">
+            <img :src="item.image" :alt="item.title" />
+            <div class="coverflow-overlay">
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.category }}</p>
+            </div>
+          </div>
+        </template>
+      </SwiperComponent>
+    `,
+    styles: [`
+      <style scoped>
+      .story-slide-coverflow {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+      .story-slide-coverflow img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+      }
+      .coverflow-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      .coverflow-overlay h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .coverflow-overlay p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+      </style>
+    `],
+  }),
+};
+
+// Cylinder 효과 (커스텀)
+export const CylinderEffect: Story = {
+  name: "Cylinder 3D 효과",
+  args: {
+    effect: "cylinder",
+    slidesPerView: 3,
+    centeredSlides: true,
+    spaceBetween: 0,
+    speed: 800,
+    debug: true,
+  },
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <SwiperComponent v-bind="args">
+        <template #slide="{ item, index }">
+          <div class="story-slide-cylinder">
+            <div class="cylinder-content">
+              <div class="cylinder-icon">🎯</div>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.description }}</p>
+              <div class="cylinder-footer">{{ item.category }}</div>
+            </div>
+          </div>
+        </template>
+      </SwiperComponent>
+    `,
+    styles: [`
+      <style scoped>
+      .story-slide-cylinder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 250px;
+        padding: 20px;
+        border-radius: 20px;
+        background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-align: center;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+      }
+      .cylinder-content {
+        width: 100%;
+      }
+      .cylinder-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+      .story-slide-cylinder h3 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .story-slide-cylinder p {
+        margin: 0 0 16px;
+        font-size: 14px;
+        opacity: 0.9;
+        line-height: 1.4;
+      }
+      .cylinder-footer {
+        font-size: 12px;
+        padding: 4px 12px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        display: inline-block;
+      }
+      </style>
+    `],
+  }),
+};
+
+// 자동재생 + 진행바
+export const AutoplayWithProgressbar: Story = {
+  name: "자동재생 + 진행바",
+  args: {
+    autoplay: { delay: 2500, disableOnInteraction: false },
+    paginationType: "progressbar",
+    speed: 400,
+  },
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <SwiperComponent v-bind="args">
+        <template #slide="{ item, index }">
+          <div class="story-slide-progress">
+            <div class="progress-number">{{ index + 1 }}</div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.description }}</p>
+            <div class="progress-indicator">자동재생 중...</div>
+          </div>
+        </template>
+      </SwiperComponent>
+    `,
+    styles: [`
+      <style scoped>
+      .story-slide-progress {
+        background: white;
+        border: 2px solid #e1e8ed;
+        border-radius: 16px;
+        padding: 32px;
+        text-align: center;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .progress-number {
+        font-size: 48px;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 16px;
+      }
+      .story-slide-progress h3 {
+        margin: 0 0 12px;
+        color: #2c3e50;
+        font-size: 20px;
+      }
+      .story-slide-progress p {
+        margin: 0 0 16px;
+        color: #7f8c8d;
+        line-height: 1.5;
+      }
+      .progress-indicator {
+        font-size: 12px;
+        color: #007aff;
+        font-weight: 500;
+      }
+      </style>
+    `],
+  }),
+};
+
+// 세로 방향
+export const VerticalDirection: Story = {
+  name: "세로 방향 슬라이드",
+  args: {
+    direction: "vertical",
+    slidesPerView: 2,
+    spaceBetween: 15,
+  },
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <div style="height: 400px;">
+        <SwiperComponent v-bind="args">
+          <template #slide="{ item, index }">
+            <div class="story-slide-vertical">
+              <div class="vertical-number">{{ index + 1 }}</div>
+              <div class="vertical-content">
+                <h4>{{ item.title }}</h4>
+                <p>{{ item.category }}</p>
+              </div>
+            </div>
+          </template>
+        </SwiperComponent>
+      </div>
+    `,
+    styles: [`
+      <style scoped>
+      .story-slide-vertical {
+        display: flex;
+        align-items: center;
+        padding: 16px;
+        background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 100%);
+        border-radius: 8px;
+        color: white;
+        min-height: 80px;
+      }
+      .vertical-number {
+        font-size: 24px;
+        font-weight: bold;
+        margin-right: 16px;
+        width: 40px;
+        text-align: center;
+      }
+      .vertical-content h4 {
+        margin: 0 0 4px;
+        font-size: 16px;
+      }
+      .vertical-content p {
+        margin: 0;
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      </style>
+    `],
+  }),
+};
+
+// 다양한 효과 비교
+export const EffectsComparison: Story = {
+  name: "효과 비교",
+  args: {
+    effect: "cube",
+    speed: 600,
+  },
+  render: (args) => ({
+    components: { SwiperComponent },
+    setup() {
+      return { args };
+    },
+    template: `
+      <div>
+        <h3>현재 효과: {{ args.effect }}</h3>
+        <SwiperComponent v-bind="args">
+          <template #slide="{ item, index }">
+            <div class="story-slide-effects" :data-effect="args.effect">
+              <div class="effect-title">{{ args.effect.toUpperCase() }}</div>
+              <h4>{{ item.title }}</h4>
+              <p>{{ item.description }}</p>
+            </div>
+          </template>
+        </SwiperComponent>
+      </div>
+    `,
+    styles: [`
+      <style scoped>
+      .story-slide-effects {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 300px;
+        padding: 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 16px;
+        text-align: center;
+      }
+      .effect-title {
+        font-size: 12px;
+        font-weight: bold;
+        padding: 4px 12px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+      }
+      .story-slide-effects h4 {
+        margin: 0 0 12px;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      .story-slide-effects p {
+        margin: 0;
+        font-size: 16px;
+        opacity: 0.9;
+        line-height: 1.4;
+      }
+      </style>
+    `],
+  }),
+};
+
+
