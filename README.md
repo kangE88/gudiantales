@@ -181,9 +181,9 @@
       :aria-valuetext="`${currentSlideIndex + 1}번째 슬라이드, 총 ${totalSlides}개 중`"
     ></div>
 
-    <!-- Play/Pause Button for Auto-playing Carousel -->
+    <!-- Play/Pause Button for Auto-playing Carousel (autoplay가 활성화된 경우만) -->
     <button
-      v-if="props.autoplay"
+      v-if="autoplayConfig !== false"
       class="swiper-autoplay-toggle"
       type="button"
       :aria-label="autoplayToggleAriaLabel"
@@ -528,7 +528,7 @@ const adjustedSpeed = computed(() => {
   return isReducedMotion.value ? Math.min(props.speed, 200) : props.speed;
 });
 
-// 필요한 모듈들을 동적으로 계산 (A11y 모듈 추가)
+// 필요한 모듈들을 동적으로 계산 (A11y 모듈 추가, autoplay 모듈은 항상 포함하되 설정으로 제어)
 const modules = computed(() => {
   const moduleList = [];
 
@@ -538,7 +538,10 @@ const modules = computed(() => {
   if (shouldShowPagination.value) moduleList.push(MODULE_MAP.pagination);
   if (shouldShowNavigation.value) moduleList.push(MODULE_MAP.navigation);
   if (shouldShowScrollbar.value) moduleList.push(MODULE_MAP.scrollbar);
-  if (props.autoplay) moduleList.push(MODULE_MAP.autoplay);
+  
+  // Autoplay 모듈은 항상 포함 (외부 제어 가능성을 위해)
+  // 단, autoplay 설정이 false인 경우 비활성 상태로 유지
+  moduleList.push(MODULE_MAP.autoplay);
 
   // Effect 모듈 추가
   if (props.effect !== "slide") {
@@ -634,7 +637,8 @@ const scrollbarConfig = computed(() => {
 });
 
 const autoplayConfig = computed(() => {
-  if (!props.autoplay) return false;
+  // autoplay가 명시적으로 false이거나 undefined인 경우 완전히 비활성화
+  if (props.autoplay === false || props.autoplay === undefined) return false;
 
   const config = {
     delay: 3000,
@@ -784,13 +788,19 @@ const onReachEnd = () => {
 };
 
 const onAutoplayStart = () => {
-  isAutoPlaying.value = true;
-  emit("autoplayStart");
+  // autoplay가 활성화되어 있을 때만 이벤트 처리
+  if (autoplayConfig.value !== false) {
+    isAutoPlaying.value = true;
+    emit("autoplayStart");
+  }
 };
 
 const onAutoplayStop = () => {
-  isAutoPlaying.value = false;
-  emit("autoplayStop");
+  // autoplay가 활성화되어 있을 때만 이벤트 처리
+  if (autoplayConfig.value !== false) {
+    isAutoPlaying.value = false;
+    emit("autoplayStop");
+  }
 };
 
 const onSlideFocus = (index: number) => {
@@ -866,6 +876,9 @@ const goToNext = () => {
 };
 
 const toggleAutoplay = () => {
+  // autoplay가 비활성화된 경우 함수 실행하지 않음
+  if (autoplayConfig.value === false) return;
+  
   if (swiperRef.value?.swiper?.autoplay) {
     if (isAutoPlaying.value) {
       swiperRef.value.swiper.autoplay.stop();
@@ -928,7 +941,8 @@ const handleKeyNavigation = (event: KeyboardEvent) => {
       break;
     case ' ':
     case 'Enter':
-      if (props.autoplay) {
+      // autoplay가 활성화된 경우에만 토글 허용
+      if (autoplayConfig.value !== false) {
         event.preventDefault();
         toggleAutoplay();
       }
