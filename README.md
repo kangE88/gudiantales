@@ -1,3 +1,1487 @@
+<template>
+  <div
+    :class="[containerClasses, `sc-swiper-${swiperId}`]"
+    :data-effect="props.effect"
+    role="region"
+    :aria-label="computedAriaLabel"
+    :aria-roledescription="ariaRoleDescription"
+    :tabindex="isReducedMotion ? 0 : -1"
+    @keydown="handleKeyNavigation"
+  >
+    <!-- Skip Link for Screen Readers -->
+    <a 
+      href="#skip-swiper"
+      class="sr-only sr-only-focusable skip-link"
+      @click="skipToContent"
+    >
+      슬라이더 건너뛰기
+    </a>
+
+    <!-- Live Region for Announcements -->
+    <div
+      id="swiper-announcements"
+      :aria-live="isAutoPlaying ? 'polite' : 'off'"
+      aria-atomic="true"
+      class="sr-only"
+    >
+      {{ currentAnnouncement }}
+    </div>
+
+    <!-- Swiper 컨테이너 -->
+    <swiper
+      ref="swiperRef"
+      :modules="modules"
+      :pagination="paginationConfig"
+      :navigation="navigationConfig"
+      :scrollbar="scrollbarConfig"
+      :autoplay="autoplayConfig"
+      :loop="props.loop"
+      :slidesPerView="adjustedSlidesPerView"
+      :spaceBetween="adjustedSpaceBetween"
+      :centeredSlides="adjustedCenteredSlides"
+      :direction="props.direction"
+      :speed="adjustedSpeed"
+      :effect="adjustedEffect"
+      :breakpoints="props.breakpoints"
+      :a11y="a11yConfig"
+      v-bind="effectProps"
+      @swiper="onSwiperInit"
+      @slideChange="onSlideChange"
+      @click="onSlideClick"
+      @progress="onProgress"
+      @reachBeginning="onReachBeginning"
+      @reachEnd="onReachEnd"
+      @autoplayStart="onAutoplayStart"
+      @autoplayStop="onAutoplayStop"
+    >
+      <!-- 데이터 기반 슬라이드 -->
+      <template v-if="props.slides?.length">
+        <swiper-slide
+          v-for="(slide, index) in props.slides"
+          :key="slide.id || index"
+          :role="slideRole"
+          :aria-label="getSlideAriaLabel(slide, index)"
+          :aria-roledescription="slideRoleDescription"
+          :tabindex="isSlideActive(index) ? 0 : -1"
+          class="sc-swiper-slide"
+          @focus="onSlideFocus(index)"
+        >
+          <slot
+            name="slide"
+            :item="slide"
+            :index="index"
+            :isActive="isSlideActive(index)"
+            :ariaLabel="getSlideAriaLabel(slide, index)"
+          >
+            <div 
+              class="default-slide"
+              :aria-describedby="`slide-desc-${swiperId}-${index}`"
+            >
+              <h3 
+                v-if="slide.title"
+                :id="`slide-title-${swiperId}-${index}`"
+                class="slide-title"
+              >
+                {{ slide.title }}
+              </h3>
+              <p 
+                v-if="slide.description"
+                :id="`slide-desc-${swiperId}-${index}`"
+                class="slide-description"
+              >
+                {{ slide.description }}
+              </p>
+              <img
+                v-if="slide.image"
+                :src="slide.image"
+                :alt="getImageAlt(slide, index)"
+                loading="lazy"
+                @load="onImageLoad(index)"
+                @error="onImageError(index)"
+              />
+              <!-- 슬라이드 위치 정보 -->
+              <span class="sr-only slide-position">
+                {{ index + 1 }}번째 슬라이드, 총 {{ props.slides.length }}개 중
+              </span>
+            </div>
+          </slot>
+        </swiper-slide>
+      </template>
+
+      <!-- 슬롯 기반 슬라이드 -->
+      <template v-else>
+        <slot />
+      </template>
+    </swiper>
+
+    <!-- Enhanced Navigation with Accessibility -->
+    <button
+      v-if="shouldShowNavigation"
+      :class="[
+        props.direction === 'vertical' ? 'swiper-button-prev-vertical' : 'swiper-button-prev',
+        'swiper-nav-button'
+      ]"
+      type="button"
+      :aria-label="prevButtonAriaLabel"
+      :aria-describedby="`nav-prev-desc-${swiperId}`"
+      :disabled="isAtStart && !props.loop"
+      :tabindex="0"
+      @click="goToPrev"
+      @keydown="handleNavButtonKeydown($event, 'prev')"
+    >
+      <span aria-hidden="true">{{ props.direction === 'vertical' ? '↑' : '←' }}</span>
+      <span :id="`nav-prev-desc-${swiperId}`" class="sr-only">
+        이전 슬라이드로 이동 ({{ currentSlideIndex > 0 ? currentSlideIndex : props.slides?.length || 1 }}번째)
+      </span>
+    </button>
+
+    <button
+      v-if="shouldShowNavigation"
+      :class="[
+        props.direction === 'vertical' ? 'swiper-button-next-vertical' : 'swiper-button-next',
+        'swiper-nav-button'
+      ]"
+      type="button"
+      :aria-label="nextButtonAriaLabel"
+      :aria-describedby="`nav-next-desc-${swiperId}`"
+      :disabled="isAtEnd && !props.loop"
+      :tabindex="0"
+      @click="goToNext"
+      @keydown="handleNavButtonKeydown($event, 'next')"
+    >
+      <span aria-hidden="true">{{ props.direction === 'vertical' ? '↓' : '→' }}</span>
+      <span :id="`nav-next-desc-${swiperId}`" class="sr-only">
+        다음 슬라이드로 이동 ({{ currentSlideIndex + 2 > (props.slides?.length || 1) ? 1 : currentSlideIndex + 2 }}번째)
+      </span>
+    </button>
+
+    <!-- Enhanced Pagination with Accessibility -->
+    <div
+      v-if="shouldShowPagination"
+      :class="props.direction === 'vertical' ? 'swiper-pagination-vertical' : 'swiper-pagination'"
+      role="tablist"
+      :aria-label="paginationAriaLabel"
+      :aria-describedby="`pagination-desc-${swiperId}`"
+    >
+      <!-- Pagination Description -->
+      <span :id="`pagination-desc-${swiperId}`" class="sr-only">
+        슬라이드 페이지네이션. 특정 슬라이드로 이동하려면 해당 번호를 선택하세요.
+      </span>
+    </div>
+
+    <!-- Scrollbar with Accessibility -->
+    <div
+      v-if="shouldShowScrollbar"
+      :class="props.direction === 'vertical' ? 'swiper-scrollbar-vertical' : 'swiper-scrollbar'"
+      role="scrollbar"
+      :aria-label="scrollbarAriaLabel"
+      :aria-valuenow="currentSlideIndex + 1"
+      :aria-valuemin="1"
+      :aria-valuemax="totalSlides"
+      :aria-valuetext="`${currentSlideIndex + 1}번째 슬라이드, 총 ${totalSlides}개 중`"
+    ></div>
+
+    <!-- Play/Pause Button for Auto-playing Carousel -->
+    <button
+      v-if="props.autoplay"
+      class="swiper-autoplay-toggle"
+      type="button"
+      :aria-label="autoplayToggleAriaLabel"
+      :aria-pressed="isAutoPlaying.toString()"
+      @click="toggleAutoplay"
+      @keydown="handleAutoplayToggleKeydown"
+    >
+      <span aria-hidden="true">{{ isAutoPlaying ? '⏸' : '▶' }}</span>
+      <span class="sr-only">
+        자동재생 {{ isAutoPlaying ? '일시정지' : '시작' }}
+      </span>
+    </button>
+
+    <!-- Status Information -->
+    <div
+      class="swiper-status sr-only"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      현재 {{ currentSlideIndex + 1 }}번째 슬라이드, 총 {{ totalSlides }}개
+      {{ props.loop ? '(무한 반복 모드)' : '' }}
+      {{ isAutoPlaying ? '(자동재생 중)' : '' }}
+    </div>
+
+    <!-- Skip Target -->
+    <div id="skip-swiper" tabindex="-1" class="skip-target sr-only">
+      슬라이더 끝
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import {
+  Autoplay,
+  A11y,
+  EffectCards,
+  EffectCoverflow,
+  EffectCreative,
+  EffectCube,
+  EffectFade,
+  EffectFlip,
+  Navigation,
+  Pagination,
+  Scrollbar,
+} from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/vue";
+import { computed, markRaw, onMounted, onUnmounted, reactive, shallowRef, ref, watch, nextTick } from "vue";
+
+// CSS imports
+import "swiper/css";
+import "swiper/css/a11y";
+import "swiper/css/effect-cards";
+import "swiper/css/effect-coverflow";
+import "swiper/css/effect-creative";
+import "swiper/css/effect-cube";
+import "swiper/css/effect-fade";
+import "swiper/css/effect-flip";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import "swiper/css/scrollbar";
+
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+export interface ScSwiperProps {
+  slides?: any[];
+  pagination?: boolean | "bullets" | "fraction" | "progressbar" | object;
+  paginationType?: "bullets" | "fraction" | "progressbar" | "custom";
+  navigation?: boolean | object;
+  scrollbar?: boolean | object;
+  autoplay?: boolean | object;
+  loop?: boolean;
+  slidesPerView?: number | "auto";
+  spaceBetween?: number;
+  centeredSlides?: boolean;
+  direction?: "horizontal" | "vertical";
+  speed?: number;
+  effect?: "slide" | "fade" | "cube" | "coverflow" | "flip" | "cards" | "creative" | "cylinder";
+  breakpoints?: { [key: number]: any };
+  swiperId?: string;
+  // Variants (단순화)
+  size?: "small" | "medium" | "large";
+  theme?: "default" | "dark" | "light";
+  // Accessibility props
+  ariaLabel?: string;
+  ariaRoleDescription?: string;
+  slideRole?: string;
+  slideRoleDescription?: string;
+  enableKeyboard?: boolean;
+  respectPrefersReducedMotion?: boolean;
+  announceSlideChanges?: boolean;
+}
+
+// ============================================================================
+// ACCESSIBILITY UTILITIES
+// ============================================================================
+const useAccessibility = () => {
+  // Detect reduced motion preference
+  const isReducedMotion = ref(false);
+  
+  // Detect high contrast mode
+  const isHighContrast = ref(false);
+  
+  // Detect screen reader
+  const isScreenReader = ref(false);
+
+  const detectAccessibilityPreferences = () => {
+    if (typeof window !== 'undefined') {
+      // Check for reduced motion
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      isReducedMotion.value = reducedMotionQuery.matches;
+      reducedMotionQuery.addEventListener('change', (e) => {
+        isReducedMotion.value = e.matches;
+      });
+
+      // Check for high contrast
+      const highContrastQuery = window.matchMedia('(prefers-contrast: high)');
+      isHighContrast.value = highContrastQuery.matches;
+      highContrastQuery.addEventListener('change', (e) => {
+        isHighContrast.value = e.matches;
+      });
+
+      // Basic screen reader detection
+      isScreenReader.value = !!(
+        navigator.userAgent.match(/NVDA|JAWS|VoiceOver|TalkBack/i) ||
+        window.navigator.userAgent.includes('Screenreader') ||
+        document.getElementById('sr-test')
+      );
+    }
+  };
+
+  return {
+    isReducedMotion,
+    isHighContrast,
+    isScreenReader,
+    detectAccessibilityPreferences
+  };
+};
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+let idCounter = 0;
+const generateId = () => `swiper-${++idCounter}-${Date.now()}`;
+
+// Effect 설정 맵
+const EFFECT_CONFIGS = {
+  cube: {
+    cubeEffect: {
+      shadow: true,
+      slideShadows: true,
+      shadowOffset: 50,
+      shadowScale: 0.94,
+    },
+  },
+  fade: {
+    fadeEffect: {
+      crossFade: true,
+    },
+  },
+  coverflow: {
+    coverflowEffect: {
+      rotate: 0,
+      stretch: 0,
+      depth: 100,
+      modifier: 1,
+      slideShadows: true,
+    },
+  },
+  flip: {
+    flipEffect: {
+      slideShadows: true,
+      limitRotation: true,
+    },
+  },
+  cards: {
+    cardsEffect: {
+      slideShadows: true,
+      perSlideOffset: 5,
+      perSlideRotate: 30,
+      rotate: true,
+    },
+  },
+  creative: {
+    creativeEffect: {
+      prev: {
+        shadow: true,
+        translate: ["-120%", 0, -500],
+        rotate: [0, 0, -90],
+      },
+      next: {
+        shadow: true,
+        translate: ["120%", 0, -500],
+        rotate: [0, 0, 90],
+      },
+    },
+  },
+  cylinder: {
+    coverflowEffect: {
+      rotate: 120,
+      stretch: -100,
+      depth: 800,
+      modifier: 5,
+      slideShadows: true,
+      scale: 0.6,
+    },
+  },
+};
+
+// 모듈 맵
+const MODULE_MAP = {
+  pagination: Pagination,
+  navigation: Navigation,
+  scrollbar: Scrollbar,
+  autoplay: Autoplay,
+  a11y: A11y,
+  fade: EffectFade,
+  cube: EffectCube,
+  coverflow: EffectCoverflow,
+  flip: EffectFlip,
+  cards: EffectCards,
+  creative: EffectCreative,
+};
+
+// ============================================================================
+// COMPONENT SETUP
+// ============================================================================
+const props = withDefaults(defineProps<ScSwiperProps>(), {
+  slides: () => [],
+  pagination: true,
+  navigation: true,
+  scrollbar: false,
+  autoplay: false,
+  loop: false,
+  slidesPerView: 1,
+  spaceBetween: 0,
+  centeredSlides: false,
+  direction: "horizontal",
+  speed: 300,
+  effect: "slide",
+  size: "medium",
+  theme: "default",
+  ariaLabel: "",
+  ariaRoleDescription: "carousel",
+  slideRole: "group",
+  slideRoleDescription: "slide",
+  enableKeyboard: true,
+  respectPrefersReducedMotion: true,
+  announceSlideChanges: true,
+});
+
+const emit = defineEmits<{
+  slideChange: [{ activeIndex: number; previousIndex: number }];
+  init: [any];
+  slideClick: [
+    {
+      index: number;
+      slideData?: any;
+      event: Event;
+      isActiveSlide: boolean;
+      clickType: "single" | "double";
+    },
+  ];
+  slideDoubleClick: [
+    {
+      index: number;
+      slideData?: any;
+      event: Event;
+    },
+  ];
+  progress: [{ progress: number }];
+  reachBeginning: [];
+  reachEnd: [];
+  autoplayStart: [];
+  autoplayStop: [];
+  slideFocus: [{ index: number }];
+}>();
+
+// Accessibility hook
+const { isReducedMotion, isHighContrast, isScreenReader, detectAccessibilityPreferences } = useAccessibility();
+
+// Refs
+const swiperRef = shallowRef<any>(null);
+const currentSlideIndex = ref(0);
+const totalSlides = ref(0);
+const isAtStart = ref(true);
+const isAtEnd = ref(false);
+const isAutoPlaying = ref(false);
+const currentAnnouncement = ref('');
+
+// Computed
+const swiperId = computed(() => props.swiperId || generateId());
+
+const containerClasses = computed(() => {
+  const baseClass = "sc-swiper-container";
+  const sizeClass = `sc-swiper--${props.size}`;
+  const themeClass = `sc-swiper--${props.theme}`;
+  const directionClass = props.direction === "vertical" ? "sc-swiper--vertical" : "";
+  const a11yClasses = [
+    isReducedMotion.value ? 'sc-swiper--reduced-motion' : '',
+    isHighContrast.value ? 'sc-swiper--high-contrast' : '',
+    isScreenReader.value ? 'sc-swiper--screen-reader' : ''
+  ].filter(Boolean);
+  
+  return [baseClass, sizeClass, themeClass, directionClass, ...a11yClasses];
+});
+
+const shouldShowNavigation = computed(() => props.navigation !== false);
+const shouldShowPagination = computed(() => props.pagination !== false);
+const shouldShowScrollbar = computed(() => props.scrollbar !== false);
+
+// Accessibility computed properties
+const computedAriaLabel = computed(() => {
+  if (props.ariaLabel) return props.ariaLabel;
+  const effectName = props.effect === 'cylinder' ? 'coverflow' : props.effect;
+  return `${effectName} 효과의 이미지 슬라이더, 총 ${totalSlides.value}개 슬라이드`;
+});
+
+const ariaRoleDescription = computed(() => props.ariaRoleDescription);
+const slideRole = computed(() => props.slideRole);
+const slideRoleDescription = computed(() => props.slideRoleDescription);
+
+const prevButtonAriaLabel = computed(() => 
+  `이전 슬라이드 (현재 ${currentSlideIndex.value + 1}/${totalSlides.value})`
+);
+const nextButtonAriaLabel = computed(() => 
+  `다음 슬라이드 (현재 ${currentSlideIndex.value + 1}/${totalSlides.value})`
+);
+const paginationAriaLabel = computed(() => 
+  `슬라이드 페이지 선택, 현재 ${currentSlideIndex.value + 1}번째`
+);
+const scrollbarAriaLabel = computed(() => 
+  `슬라이드 진행 상태, ${currentSlideIndex.value + 1}/${totalSlides.value}`
+);
+const autoplayToggleAriaLabel = computed(() => 
+  `자동재생 ${isAutoPlaying.value ? '일시정지' : '시작'}`
+);
+
+// Speed adjustment based on reduced motion preference
+const adjustedSpeed = computed(() => {
+  if (!props.respectPrefersReducedMotion) return props.speed;
+  return isReducedMotion.value ? Math.min(props.speed, 200) : props.speed;
+});
+
+// 필요한 모듈들을 동적으로 계산 (A11y 모듈 추가)
+const modules = computed(() => {
+  const moduleList = [];
+
+  // A11y 모듈은 항상 포함
+  moduleList.push(MODULE_MAP.a11y);
+
+  if (shouldShowPagination.value) moduleList.push(MODULE_MAP.pagination);
+  if (shouldShowNavigation.value) moduleList.push(MODULE_MAP.navigation);
+  if (shouldShowScrollbar.value) moduleList.push(MODULE_MAP.scrollbar);
+  if (props.autoplay) moduleList.push(MODULE_MAP.autoplay);
+
+  // Effect 모듈 추가
+  if (props.effect !== "slide") {
+    const effectModuleKey = props.effect === "cylinder" ? "coverflow" : props.effect;
+    if (MODULE_MAP[effectModuleKey as keyof typeof MODULE_MAP]) {
+      moduleList.push(MODULE_MAP[effectModuleKey as keyof typeof MODULE_MAP]);
+    }
+  }
+
+  return markRaw(moduleList);
+});
+
+// A11y 설정
+const a11yConfig = computed(() => ({
+  enabled: true,
+  prevSlideMessage: '이전 슬라이드',
+  nextSlideMessage: '다음 슬라이드',
+  firstSlideMessage: '첫 번째 슬라이드입니다',
+  lastSlideMessage: '마지막 슬라이드입니다',
+  paginationBulletMessage: '{{index}}번째 슬라이드로 이동',
+  slideLabelMessage: '{{index}} / {{slidesLength}}',
+  containerMessage: `${props.effect} 효과 슬라이더`,
+  containerRoleDescriptionMessage: '슬라이더',
+  itemRoleDescriptionMessage: '슬라이드',
+  slideRole: 'group',
+  containerRole: 'region'
+}));
+
+// 설정들을 간단하게 - string selector 사용으로 DOM 참조 문제 해결
+const navigationConfig = computed(() => {
+  if (!shouldShowNavigation.value) return false;
+
+  const config = {
+    prevEl: `.sc-swiper-${swiperId.value} .swiper-nav-button.swiper-button-prev`,
+    nextEl: `.sc-swiper-${swiperId.value} .swiper-nav-button.swiper-button-next`,
+    hideOnClick: false,
+    disabledClass: 'swiper-button-disabled',
+  };
+
+  // Vertical direction일 때 navigation 방향 조정
+  if (props.direction === "vertical") {
+    config.prevEl = `.sc-swiper-${swiperId.value} .swiper-nav-button.swiper-button-prev-vertical`;
+    config.nextEl = `.sc-swiper-${swiperId.value} .swiper-nav-button.swiper-button-next-vertical`;
+  }
+
+  return typeof props.navigation === "object" ? { ...config, ...props.navigation } : config;
+});
+
+const paginationConfig = computed(() => {
+  if (!shouldShowPagination.value) return false;
+
+  const config = {
+    el: `.sc-swiper-${swiperId.value} .swiper-pagination`,
+    clickable: true,
+    type: props.paginationType || (typeof props.pagination === "string" ? props.pagination : "bullets"),
+    bulletClass: 'swiper-pagination-bullet',
+    bulletActiveClass: 'swiper-pagination-bullet-active',
+    modifierClass: 'swiper-pagination-',
+    renderBullet: (index: number, className: string) => {
+      const slideData = props.slides?.[index];
+      const title = slideData?.title || `슬라이드 ${index + 1}`;
+      return `<button class="${className}" type="button" role="tab" 
+                aria-label="${index + 1}번째 슬라이드: ${title}" 
+                aria-selected="false" tabindex="-1">
+                <span aria-hidden="true">${index + 1}</span>
+              </button>`;
+    },
+  };
+
+  // Vertical direction일 때 pagination 위치 조정
+  if (props.direction === "vertical") {
+    config.el = `.sc-swiper-${swiperId.value} .swiper-pagination-vertical`;
+  }
+
+  return typeof props.pagination === "object" ? { ...config, ...props.pagination } : config;
+});
+
+const scrollbarConfig = computed(() => {
+  if (!shouldShowScrollbar.value) return false;
+
+  const config = {
+    el: `.sc-swiper-${swiperId.value} .swiper-scrollbar`,
+    draggable: true,
+    hide: false,
+  };
+
+  // Vertical direction일 때 scrollbar 위치 조정
+  if (props.direction === "vertical") {
+    config.el = `.sc-swiper-${swiperId.value} .swiper-scrollbar-vertical`;
+  }
+
+  return typeof props.scrollbar === "object" ? { ...config, ...props.scrollbar } : config;
+});
+
+const autoplayConfig = computed(() => {
+  if (!props.autoplay) return false;
+
+  const config = {
+    delay: 3000,
+    disableOnInteraction: false,
+    pauseOnMouseEnter: true,
+    stopOnLastSlide: false,
+  };
+
+  return typeof props.autoplay === "object" ? { ...config, ...props.autoplay } : config;
+});
+
+// Effect에 따른 slidesPerView 조정
+const adjustedSlidesPerView = computed(() => {
+  // Vertical direction일 때 특정 effects는 지원하지 않음
+  if (props.direction === "vertical") {
+    if (!["slide", "fade"].includes(props.effect || "")) {
+      console.warn(
+        `Vertical direction doesn't support ${props.effect} effect. Falling back to slide effect.`
+      );
+      return 1;
+    }
+  }
+
+  // Cube, Fade, Flip, Cards, Creative effect는 slidesPerView가 1이어야 함
+  if (["cube", "fade", "flip", "cards", "creative"].includes(props.effect || "")) {
+    return 1;
+  }
+  // Cylinder effect는 3개가 보이도록 설정
+  if (props.effect === "cylinder") {
+    return 3;
+  }
+  return props.slidesPerView;
+});
+
+// Effect별 spaceBetween 조정
+const adjustedSpaceBetween = computed(() => {
+  if (props.effect === "cylinder") {
+    return 0;
+  }
+  return props.spaceBetween;
+});
+
+// Effect별 centeredSlides 조정
+const adjustedCenteredSlides = computed(() => {
+  if (props.effect === "cylinder") {
+    return true;
+  }
+  return props.centeredSlides;
+});
+
+// Effect 이름 조정 (cylinder는 coverflow로 변환, vertical direction 제한)
+const adjustedEffect = computed(() => {
+  // Vertical direction일 때 slide와 fade만 지원
+  if (props.direction === "vertical") {
+    if (!["slide", "fade"].includes(props.effect || "")) {
+      return "slide";
+    }
+  }
+  return props.effect === "cylinder" ? "coverflow" : props.effect;
+});
+
+// Effect별 props를 동적으로 생성
+const effectProps = computed(() => {
+  if (props.effect === "slide") return {};
+
+  // cylinder effect는 coverflow 설정을 사용
+  const effectKey = props.effect === "cylinder" ? "cylinder" : props.effect;
+  return EFFECT_CONFIGS[effectKey as keyof typeof EFFECT_CONFIGS] || {};
+});
+
+// Helper methods
+const isSlideActive = (index: number) => currentSlideIndex.value === index;
+
+const getSlideAriaLabel = (slide: any, index: number) => {
+  if (slide.title && slide.description) {
+    return `${slide.title}. ${slide.description}. ${index + 1}번째 슬라이드, 총 ${props.slides?.length || 1}개 중`;
+  }
+  if (slide.title) {
+    return `${slide.title}. ${index + 1}번째 슬라이드, 총 ${props.slides?.length || 1}개 중`;
+  }
+  return `${index + 1}번째 슬라이드, 총 ${props.slides?.length || 1}개 중`;
+};
+
+const getImageAlt = (slide: any, index: number) => {
+  if (slide.alt) return slide.alt;
+  if (slide.title) return slide.title;
+  return `슬라이드 ${index + 1} 이미지`;
+};
+
+const announceSlideChange = (newIndex: number, previousIndex: number) => {
+  if (!props.announceSlideChanges || !isScreenReader.value) return;
+  
+  const slideData = props.slides?.[newIndex];
+  const announcement = slideData?.title 
+    ? `${slideData.title}, ${newIndex + 1}번째 슬라이드`
+    : `${newIndex + 1}번째 슬라이드`;
+  
+  currentAnnouncement.value = announcement;
+  
+  // Clear announcement after delay
+  setTimeout(() => {
+    currentAnnouncement.value = '';
+  }, 1000);
+};
+
+// ============================================================================
+// EVENT HANDLERS
+// ============================================================================
+const onSwiperInit = (swiper: any) => {
+  totalSlides.value = swiper.slides?.length || props.slides?.length || 0;
+  currentSlideIndex.value = swiper.activeIndex || 0;
+  isAutoPlaying.value = !!swiper.autoplay?.running;
+  
+  // Update pagination bullet states
+  updatePaginationA11y(swiper);
+  
+  emit("init", swiper);
+};
+
+const onSlideChange = (swiper: any) => {
+  const previousIndex = currentSlideIndex.value;
+  currentSlideIndex.value = swiper.activeIndex;
+  isAtStart.value = swiper.isBeginning;
+  isAtEnd.value = swiper.isEnd;
+  
+  // Update pagination accessibility
+  updatePaginationA11y(swiper);
+  
+  // Announce slide change for screen readers
+  announceSlideChange(swiper.activeIndex, previousIndex);
+  
+  emit("slideChange", { activeIndex: swiper.activeIndex, previousIndex });
+};
+
+const onProgress = (swiper: any, progress: number) => {
+  emit("progress", { progress });
+};
+
+const onReachBeginning = () => {
+  isAtStart.value = true;
+  emit("reachBeginning");
+};
+
+const onReachEnd = () => {
+  isAtEnd.value = true;
+  emit("reachEnd");
+};
+
+const onAutoplayStart = () => {
+  isAutoPlaying.value = true;
+  emit("autoplayStart");
+};
+
+const onAutoplayStop = () => {
+  isAutoPlaying.value = false;
+  emit("autoplayStop");
+};
+
+const onSlideFocus = (index: number) => {
+  if (swiperRef.value?.swiper && index !== currentSlideIndex.value) {
+    swiperRef.value.swiper.slideTo(index);
+  }
+  emit("slideFocus", { index });
+};
+
+const onImageLoad = (index: number) => {
+  // Image loaded successfully
+  console.debug(`Image loaded for slide ${index + 1}`);
+};
+
+const onImageError = (index: number) => {
+  // Image failed to load
+  console.warn(`Failed to load image for slide ${index + 1}`);
+};
+
+// 클릭 관련 상태 관리
+const clickState = reactive({
+  lastClickTime: 0,
+  lastClickIndex: -1,
+  clickTimeout: null as number | null,
+});
+
+const onSlideClick = (swiper: any, event: Event) => {
+  const clickedSlide = (event.target as HTMLElement).closest(".swiper-slide");
+  if (!clickedSlide) return;
+
+  const slides = Array.from(swiper.slides);
+  const index = slides.indexOf(clickedSlide);
+  const slideData = props.slides?.[index];
+  const isActiveSlide = swiper.activeIndex === index;
+  const currentTime = Date.now();
+
+  // 더블클릭 감지
+  const isDoubleClick =
+    currentTime - clickState.lastClickTime < 300 && clickState.lastClickIndex === index;
+
+  // 이전 클릭 타임아웃 클리어
+  if (clickState.clickTimeout !== null) {
+    clearTimeout(clickState.clickTimeout);
+    clickState.clickTimeout = null;
+  }
+
+  if (isDoubleClick) {
+    emit("slideDoubleClick", { index, slideData, event });
+    clickState.lastClickTime = 0;
+    clickState.lastClickIndex = -1;
+  } else {
+    clickState.clickTimeout = setTimeout(() => {
+      emit("slideClick", { index, slideData, event, isActiveSlide, clickType: "single" });
+      clickState.clickTimeout = null;
+    }, 50);
+  }
+
+  clickState.lastClickTime = currentTime;
+  clickState.lastClickIndex = index;
+};
+
+// Navigation methods
+const goToPrev = () => {
+  if (swiperRef.value?.swiper) {
+    swiperRef.value.swiper.slidePrev();
+  }
+};
+
+const goToNext = () => {
+  if (swiperRef.value?.swiper) {
+    swiperRef.value.swiper.slideNext();
+  }
+};
+
+const toggleAutoplay = () => {
+  if (swiperRef.value?.swiper?.autoplay) {
+    if (isAutoPlaying.value) {
+      swiperRef.value.swiper.autoplay.stop();
+    } else {
+      swiperRef.value.swiper.autoplay.start();
+    }
+  }
+};
+
+// Keyboard navigation
+const handleKeyNavigation = (event: KeyboardEvent) => {
+  if (!props.enableKeyboard) return;
+  
+  const { key, ctrlKey, altKey, metaKey } = event;
+  
+  // Ignore if modifier keys are pressed (except for specific combinations)
+  if (ctrlKey || altKey || metaKey) return;
+  
+  // Ignore if focus is on an input element
+  const target = event.target as HTMLElement;
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+    return;
+  }
+  
+  const swiper = swiperRef.value?.swiper;
+  if (!swiper) return;
+  
+  switch (key) {
+    case 'ArrowLeft':
+      if (props.direction === 'horizontal') {
+        event.preventDefault();
+        goToPrev();
+      }
+      break;
+    case 'ArrowRight':
+      if (props.direction === 'horizontal') {
+        event.preventDefault();
+        goToNext();
+      }
+      break;
+    case 'ArrowUp':
+      if (props.direction === 'vertical') {
+        event.preventDefault();
+        goToPrev();
+      }
+      break;
+    case 'ArrowDown':
+      if (props.direction === 'vertical') {
+        event.preventDefault();
+        goToNext();
+      }
+      break;
+    case 'Home':
+      event.preventDefault();
+      swiper.slideTo(0);
+      break;
+    case 'End':
+      event.preventDefault();
+      swiper.slideTo(swiper.slides.length - 1);
+      break;
+    case ' ':
+    case 'Enter':
+      if (props.autoplay) {
+        event.preventDefault();
+        toggleAutoplay();
+      }
+      break;
+  }
+};
+
+const handleNavButtonKeydown = (event: KeyboardEvent, direction: 'prev' | 'next') => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    if (direction === 'prev') {
+      goToPrev();
+    } else {
+      goToNext();
+    }
+  }
+};
+
+const handleAutoplayToggleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    toggleAutoplay();
+  }
+};
+
+// Update pagination accessibility attributes
+const updatePaginationA11y = (swiper: any) => {
+  nextTick(() => {
+    const bullets = document.querySelectorAll(
+      `.sc-swiper-${swiperId.value} .swiper-pagination-bullet`
+    );
+    
+    bullets.forEach((bullet, index) => {
+      const isActive = index === swiper.activeIndex;
+      bullet.setAttribute('aria-selected', isActive.toString());
+      bullet.setAttribute('tabindex', isActive ? '0' : '-1');
+      
+      if (isActive) {
+        (bullet as HTMLElement).focus();
+      }
+    });
+  });
+};
+
+// Skip to content functionality
+const skipToContent = () => {
+  const skipTarget = document.getElementById('skip-swiper');
+  if (skipTarget) {
+    skipTarget.focus();
+  }
+};
+
+// ============================================================================
+// LIFECYCLE
+// ============================================================================
+onMounted(() => {
+  detectAccessibilityPreferences();
+  
+  // Additional setup for accessibility
+  if (props.respectPrefersReducedMotion && isReducedMotion.value) {
+    console.info('Reduced motion detected - animations will be minimized');
+  }
+});
+
+onUnmounted(() => {
+  if (clickState.clickTimeout !== null) {
+    clearTimeout(clickState.clickTimeout);
+    clickState.clickTimeout = null;
+  }
+});
+
+// Watch for reduced motion changes
+watch(isReducedMotion, (newValue) => {
+  if (newValue && swiperRef.value?.swiper) {
+    // Update swiper speed if reduced motion is enabled
+    swiperRef.value.swiper.params.speed = adjustedSpeed.value;
+  }
+});
+
+// ============================================================================
+// EXPOSE
+// ============================================================================
+defineExpose({
+  swiper: computed(() => swiperRef.value?.swiper),
+  slideTo: (index: number) => swiperRef.value?.swiper?.slideTo(index),
+  slideNext: () => swiperRef.value?.swiper?.slideNext(),
+  slidePrev: () => swiperRef.value?.swiper?.slidePrev(),
+  update: () => swiperRef.value?.swiper?.update(),
+  toggleAutoplay,
+  goToPrev,
+  goToNext,
+  // Accessibility methods
+  announceSlideChange,
+  isReducedMotion: computed(() => isReducedMotion.value),
+  isHighContrast: computed(() => isHighContrast.value),
+  isScreenReader: computed(() => isScreenReader.value),
+});
+</script>
+
+<style scoped>
+/* ============================================================================
+   접근성 기본 스타일
+   ============================================================================ */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: inherit !important;
+  margin: inherit !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: inherit !important;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  z-index: 1000;
+  transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+.skip-target:focus {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   기본 스타일
+   ============================================================================ */
+.sc-swiper-container {
+  position: relative;
+  width: 100%;
+}
+
+.sc-swiper-container .swiper {
+  width: 100%;
+  height: 100%;
+}
+
+.sc-swiper-container:focus-within {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   감소된 모션 지원
+   ============================================================================ */
+.sc-swiper--reduced-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+}
+
+.sc-swiper--reduced-motion .swiper-slide {
+  transition: none !important;
+}
+
+/* ============================================================================
+   고대비 모드 지원
+   ============================================================================ */
+.sc-swiper--high-contrast {
+  border: 2px solid;
+}
+
+.sc-swiper--high-contrast .swiper-button-next,
+.sc-swiper--high-contrast .swiper-button-prev {
+  border: 2px solid !important;
+  background: Canvas !important;
+  color: CanvasText !important;
+}
+
+.sc-swiper--high-contrast .swiper-pagination-bullet {
+  border: 1px solid !important;
+  background: transparent !important;
+}
+
+.sc-swiper--high-contrast .swiper-pagination-bullet-active {
+  background: CanvasText !important;
+}
+
+/* ============================================================================
+   기본 슬라이드 스타일 (접근성 강화)
+   ============================================================================ */
+.default-slide {
+  padding: 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.slide-description {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.default-slide img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.slide-position {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+}
+
+/* ============================================================================
+   향상된 네비게이션 버튼 (접근성 강화)
+   ============================================================================ */
+.swiper-nav-button {
+  color: #007aff !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.3s ease !important;
+  z-index: 10 !important;
+  margin-top: -22px !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+}
+
+.swiper-nav-button:hover,
+.swiper-nav-button:focus {
+  background: rgba(255, 255, 255, 1) !important;
+  transform: scale(1.1) !important;
+  border-color: #007aff !important;
+  outline: none !important;
+}
+
+.swiper-nav-button:focus-visible {
+  outline: 2px solid #007aff !important;
+  outline-offset: 2px !important;
+}
+
+.swiper-nav-button:disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.swiper-nav-button:disabled:hover {
+  transform: none !important;
+  border-color: transparent !important;
+}
+
+/* ============================================================================
+   향상된 페이지네이션 (접근성 강화)
+   ============================================================================ */
+:deep(.swiper-pagination) {
+  z-index: 10 !important;
+  position: relative !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+:deep(.swiper-pagination-bullet) {
+  background: rgba(0, 0, 0, 0.3) !important;
+  opacity: 1 !important;
+  transition: all 0.3s ease !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  border-radius: 50% !important;
+  width: 44px !important;
+  height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #666 !important;
+}
+
+:deep(.swiper-pagination-bullet:hover),
+:deep(.swiper-pagination-bullet:focus) {
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-color: #007aff !important;
+  outline: none !important;
+  transform: scale(1.1) !important;
+}
+
+:deep(.swiper-pagination-bullet:focus-visible) {
+  outline: 2px solid #007aff !important;
+  outline-offset: 2px !important;
+}
+
+:deep(.swiper-pagination-bullet-active) {
+  background: #007aff !important;
+  color: white !important;
+  transform: scale(1.2) !important;
+}
+
+:deep(.swiper-pagination-bullet[aria-selected="true"]) {
+  background: #007aff !important;
+  color: white !important;
+}
+
+/* ============================================================================
+   자동재생 토글 버튼
+   ============================================================================ */
+.swiper-autoplay-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  z-index: 20;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.swiper-autoplay-toggle:hover,
+.swiper-autoplay-toggle:focus {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+  outline: none;
+}
+
+.swiper-autoplay-toggle:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+.swiper-autoplay-toggle[aria-pressed="true"] {
+  background: #007aff;
+}
+
+/* ============================================================================
+   Vertical Direction 스타일 (접근성 강화)
+   ============================================================================ */
+.sc-swiper--vertical {
+  height: 500px;
+  padding: 60px 0;
+}
+
+.sc-swiper--vertical .swiper {
+  height: 100%;
+}
+
+.sc-swiper--vertical .swiper-nav-button.swiper-button-prev-vertical,
+.sc-swiper--vertical .swiper-nav-button.swiper-button-next-vertical {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+}
+
+.sc-swiper--vertical .swiper-nav-button.swiper-button-prev-vertical {
+  top: -60px !important;
+}
+
+.sc-swiper--vertical .swiper-nav-button.swiper-button-next-vertical {
+  bottom: -60px !important;
+  top: auto !important;
+}
+
+:deep(.swiper-pagination-vertical) {
+  position: absolute !important;
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: auto !important;
+  height: auto !important;
+  z-index: 10 !important;
+  flex-direction: column !important;
+}
+
+/* ============================================================================
+   Size Variants
+   ============================================================================ */
+.sc-swiper--small {
+  font-size: 14px;
+}
+
+.sc-swiper--small .default-slide {
+  padding: 15px;
+  min-height: 200px;
+}
+
+.sc-swiper--medium {
+  font-size: 16px;
+}
+
+.sc-swiper--medium .default-slide {
+  padding: 20px;
+  min-height: 300px;
+}
+
+.sc-swiper--large {
+  font-size: 18px;
+}
+
+.sc-swiper--large .default-slide {
+  padding: 30px;
+  min-height: 400px;
+}
+
+/* ============================================================================
+   Theme Variants (접근성 고려)
+   ============================================================================ */
+.sc-swiper--dark {
+  background: #1a1a1a;
+  color: white;
+}
+
+.sc-swiper--dark .default-slide {
+  background: #2d2d2d;
+  color: white;
+}
+
+.sc-swiper--dark .swiper-nav-button {
+  background: rgba(0, 0, 0, 0.7) !important;
+  color: white !important;
+}
+
+.sc-swiper--light .swiper-nav-button {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #333 !important;
+}
+
+.sc-swiper--minimal .default-slide {
+  background: transparent;
+  border: 1px solid #e0e0e0;
+}
+
+/* ============================================================================
+   반응형 (접근성 고려)
+   ============================================================================ */
+@media (max-width: 768px) {
+  .swiper-nav-button {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  :deep(.swiper-pagination-bullet) {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 12px !important;
+  }
+
+  .swiper-autoplay-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .sc-swiper--vertical .swiper-nav-button.swiper-button-prev-vertical {
+    top: -50px !important;
+  }
+
+  .sc-swiper--vertical .swiper-nav-button.swiper-button-next-vertical {
+    bottom: -50px !important;
+  }
+}
+
+/* ============================================================================
+   포커스 관리
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .sc-swiper-container * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .sc-swiper-container {
+    border: 2px solid;
+  }
+  
+  .swiper-nav-button {
+    border: 2px solid !important;
+  }
+  
+  :deep(.swiper-pagination-bullet) {
+    border: 2px solid !important;
+  }
+}
+
+/* Focus indicators improvement */
+*:focus-visible {
+  outline: 2px solid #007aff !important;
+  outline-offset: 2px !important;
+}
+
+/* Ensure sufficient color contrast */
+.default-slide {
+  color: #333;
+  background: #f8f9fa;
+}
+
+.sc-swiper--dark .default-slide {
+  color: #ffffff;
+  background: #2d2d2d;
+}
+
+/* ============================================================================
+   Effect별 스타일은 기존과 동일하므로 생략
+   ============================================================================ */
+</style>
+
 <!-- ScSwiper -->
 <!-- components/SCSwiper.vue - 단순화 버전 -->
 <template>
