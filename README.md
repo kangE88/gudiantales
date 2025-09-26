@@ -1,12 +1,69 @@
-
-
-<!-- ScSwiper -->
-<!-- components/SCSwiper.vue - 단순화 버전 -->
+<!-- SCSwiper with Web Accessibility -->
+<!-- components/SCSwiper.vue - 웹접근성 추가 버전 -->
 <template>
   <div
     :class="[containerClasses, `sc-swiper-${swiperId}`]"
     :data-effect="props.effect"
+    role="region"
+    :aria-describedby="`${accessibilityLabels.liveRegionId} ${accessibilityLabels.statusId}`"
+    tabindex="0"
+    @keydown="onContainerKeydown"
+    @focus="onContainerFocus"
+    @blur="onContainerBlur"
   >
+    <!-- Skip Link -->
+    <a 
+      v-if="props.skipLinks"
+      :href="`#${skipLinkId}`" 
+      class="sr-only sr-only-focusable skip-link"
+      @click="skipToEndOfCarousel"
+    >
+      {{ accessibilityLabels.skipToContent }}
+    </a>
+
+    <!-- Live Region for Screen Reader Announcements -->
+    <div
+      :id="accessibilityLabels.liveRegionId"
+      aria-live="polite"
+      aria-atomic="true"
+      class="sr-only"
+    >
+      {{ liveRegionText }}
+    </div>
+
+    <!-- Status Region for Current State -->
+    <div
+      :id="accessibilityLabels.statusId"
+      aria-live="polite"
+      aria-atomic="false"
+      class="sr-only"
+    >
+      현재 {{ currentSlideIndex + 1 }}번째 슬라이드, 총 {{ totalSlides }}개
+    </div>
+
+    <!-- Additional Announcements for Complex Interactions -->
+    <div
+      :id="accessibilityLabels.announcementsId"
+      aria-live="assertive"
+      aria-atomic="true"
+      class="sr-only"
+    >
+      {{ announcements.join('. ') }}
+    </div>
+
+    <!-- Autoplay Control -->
+    <button
+      v-if="props.autoplay"
+      :aria-label="isAutoplayPaused ? accessibilityLabels.playAutoplay : accessibilityLabels.pauseAutoplay"
+      class="autoplay-control"
+      @click="toggleAutoplay"
+      @keydown="onAutoplayKeydown"
+      type="button"
+    >
+      <span v-if="isAutoplayPaused" aria-hidden="true">▶</span>
+      <span v-else aria-hidden="true">⏸</span>
+    </button>
+
     <!-- Swiper 컨테이너 -->
     <swiper
       ref="swiperRef"
@@ -15,7 +72,8 @@
       :navigation="navigationConfig"
       :scrollbar="scrollbarConfig"
       :autoplay="autoplayConfig"
-      :loop="props.loop"
+      :a11y="a11yConfig"
+      :loop="safeLoopMode"
       :slidesPerView="adjustedSlidesPerView"
       :spaceBetween="adjustedSpaceBetween"
       :centeredSlides="adjustedCenteredSlides"
@@ -23,6 +81,7 @@
       :speed="props.speed"
       :effect="adjustedEffect"
       :breakpoints="props.breakpoints"
+      :keyboard="keyboardConfig"
       v-bind="effectProps"
       @swiper="onSwiperInit"
       @slideChange="onSlideChange"
@@ -33,6 +92,8 @@
         <swiper-slide
           v-for="(slide, index) in props.slides"
           :key="slide.id || index"
+          @focus="onSlideFocus(index)"
+          @keydown="onSlideKeydown($event, index)"
         >
           <slot
             name="slide"
@@ -46,6 +107,7 @@
                 v-if="slide.image"
                 :src="slide.image"
                 :alt="slide.title || `Slide ${index + 1}`"
+                role="img"
               />
             </div>
           </slot>
@@ -62,10 +124,16 @@
     <div
       v-if="shouldShowNavigation"
       :class="props.direction === 'vertical' ? 'swiper-button-prev-vertical' : 'swiper-button-prev'"
+      @keydown="onNavigationKeydown($event, 'prev')"
+      @focus="onNavigationFocus"
+      @blur="onNavigationBlur"
     ></div>
     <div
       v-if="shouldShowNavigation"
       :class="props.direction === 'vertical' ? 'swiper-button-next-vertical' : 'swiper-button-next'"
+      @keydown="onNavigationKeydown($event, 'next')"
+      @focus="onNavigationFocus"
+      @blur="onNavigationBlur"
     ></div>
 
     <!-- Pagination -->
@@ -79,11 +147,27 @@
       v-if="shouldShowScrollbar"
       :class="props.direction === 'vertical' ? 'swiper-scrollbar-vertical' : 'swiper-scrollbar'"
     ></div>
+
+    <!-- Accessibility Instructions (Hidden) -->
+    <div class="sr-only" :id="`${swiperId}-instructions`">
+      {{ accessibilityLabels.instructions }}
+    </div>
+
+    <!-- Skip Link Target -->
+    <div 
+      v-if="props.skipLinks"
+      :id="skipLinkId" 
+      class="sr-only" 
+      tabindex="-1"
+    >
+      캐러셀 끝
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import {
+  A11y,
   Autoplay,
   EffectCards,
   EffectCoverflow,
@@ -94,12 +178,14 @@ import {
   Navigation,
   Pagination,
   Scrollbar,
+  Keyboard,
 } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/vue";
-import { computed, markRaw, onMounted, onUnmounted, reactive, shallowRef } from "vue";
+import { computed, markRaw, onMounted, onUnmounted, reactive, shallowRef, ref, watch } from "vue";
 
 // CSS imports
 import "swiper/css";
+import "swiper/css/a11y";
 import "swiper/css/effect-cards";
 import "swiper/css/effect-coverflow";
 import "swiper/css/effect-creative";
@@ -132,6 +218,19 @@ export interface ScSwiperProps {
   // Variants (단순화)
   size?: "small" | "medium" | "large";
   theme?: "default" | "dark" | "light";
+  // Accessibility props
+  ariaLabel?: string;
+  slideAriaLabelPrefix?: string;
+  announceSlideChanges?: boolean;
+  // 추가 웹접근성 props
+  reduceMotion?: boolean;
+  highContrast?: boolean;
+  focusTrap?: boolean;
+  announceAutoplay?: boolean;
+  customInstructions?: string;
+  skipLinks?: boolean;
+  // A11y 모듈 설정
+  a11y?: boolean | object;
 }
 
 // ============================================================================
@@ -210,6 +309,8 @@ const MODULE_MAP = {
   navigation: Navigation,
   scrollbar: Scrollbar,
   autoplay: Autoplay,
+  keyboard: Keyboard,
+  a11y: A11y,
   fade: EffectFade,
   cube: EffectCube,
   coverflow: EffectCoverflow,
@@ -236,6 +337,14 @@ const props = withDefaults(defineProps<ScSwiperProps>(), {
   effect: "slide",
   size: "medium",
   theme: "default",
+  announceSlideChanges: true,
+  // 추가 웹접근성 기본값
+  reduceMotion: false,
+  highContrast: false,
+  focusTrap: false,
+  announceAutoplay: true,
+  skipLinks: false,
+  a11y: true,
 });
 
 const emit = defineEmits<{
@@ -261,21 +370,73 @@ const emit = defineEmits<{
 
 // Refs
 const swiperRef = shallowRef<any>(null);
+const currentSlideIndex = ref(0);
+const totalSlides = ref(0);
+const liveRegionText = ref("");
+const isAutoplayPaused = ref(false);
+const focusedSlideIndex = ref(-1);
+const announcements = ref<string[]>([]);
+const isContainerFocused = ref(false);
 
 // Computed
 const swiperId = computed(() => props.swiperId || generateId());
+const skipLinkId = ref(`skip-${swiperId.value}`);
 
 const containerClasses = computed(() => {
   const baseClass = "sc-swiper-container";
   const sizeClass = `sc-swiper--${props.size}`;
   const themeClass = `sc-swiper--${props.theme}`;
   const directionClass = props.direction === "vertical" ? "sc-swiper--vertical" : "";
-  return [baseClass, sizeClass, themeClass, directionClass];
+  const accessibilityClasses = [];
+  
+  if (props.reduceMotion) accessibilityClasses.push("sc-swiper--reduce-motion");
+  if (props.highContrast) accessibilityClasses.push("sc-swiper--high-contrast");
+  if (props.focusTrap) accessibilityClasses.push("sc-swiper--focus-trap");
+  
+  return [baseClass, sizeClass, themeClass, directionClass, ...accessibilityClasses];
 });
 
 const shouldShowNavigation = computed(() => props.navigation !== false);
 const shouldShowPagination = computed(() => props.pagination !== false);
 const shouldShowScrollbar = computed(() => props.scrollbar !== false);
+
+// 커스텀 접근성 라벨 (A11y 모듈과 중복되지 않는 것들만)
+const accessibilityLabels = computed(() => ({
+  liveRegionId: `${swiperId.value}-live-region`,
+  instructions: props.customInstructions || getDefaultInstructions(),
+  playAutoplay: "자동 슬라이드쇼 재생",
+  pauseAutoplay: "자동 슬라이드쇼 일시정지",
+  skipToContent: `${swiperId.value} 캐러셀 건너뛰기`,
+  announcementsId: `${swiperId.value}-announcements`,
+  statusId: `${swiperId.value}-status`,
+}));
+
+// 기본 사용 설명서 생성
+const getDefaultInstructions = () => {
+  const baseInstructions = [];
+  
+  if (props.direction === "vertical") {
+    baseInstructions.push("Use up and down arrow keys to navigate slides.");
+  } else {
+    baseInstructions.push("Use left and right arrow keys to navigate slides.");
+  }
+  
+  baseInstructions.push("Use space or enter to activate buttons.");
+  baseInstructions.push("Use Home key to go to first slide, End key to go to last slide.");
+  
+  if (props.autoplay) {
+    baseInstructions.push("Press escape to pause autoplay.");
+  }
+  
+  return baseInstructions.join(" ");
+};
+
+// 키보드 설정 - 커스텀 제어만 사용
+const keyboardConfig = computed(() => ({
+  enabled: false,
+  onlyInViewport: false,
+  pageUpDown: false,
+}));
 
 // 필요한 모듈들을 동적으로 계산
 const modules = computed(() => {
@@ -285,6 +446,11 @@ const modules = computed(() => {
   if (shouldShowNavigation.value) moduleList.push(MODULE_MAP.navigation);
   if (shouldShowScrollbar.value) moduleList.push(MODULE_MAP.scrollbar);
   if (props.autoplay) moduleList.push(MODULE_MAP.autoplay);
+  
+  // Keyboard 모듈 제거 - 커스텀 키보드 핸들러 사용
+  
+  // A11y 모듈 추가
+  if (props.a11y) moduleList.push(MODULE_MAP.a11y);
 
   // Effect 모듈 추가
   if (props.effect !== "slide") {
@@ -323,6 +489,9 @@ const paginationConfig = computed(() => {
     clickable: true,
     type:
       props.paginationType || (typeof props.pagination === "string" ? props.pagination : "bullets"),
+    renderBullet: (index: number, className: string) => {
+      return `<button class="${className}" role="tab" aria-label="Go to slide ${index + 1}" aria-selected="false" tabindex="-1"></button>`;
+    },
   };
 
   // Vertical direction일 때 pagination 위치 조정
@@ -355,9 +524,32 @@ const autoplayConfig = computed(() => {
   const config = {
     delay: 3000,
     disableOnInteraction: false,
+    pauseOnMouseEnter: true,
   };
 
   return typeof props.autoplay === "object" ? { ...config, ...props.autoplay } : config;
+});
+
+// A11y 설정
+const a11yConfig = computed(() => {
+  if (!props.a11y) return false;
+
+  const config = {
+    enabled: true,
+    prevSlideMessage: props.direction === "vertical" ? "이전 슬라이드, 위로 이동" : "이전 슬라이드, 왼쪽으로 이동",
+    nextSlideMessage: props.direction === "vertical" ? "다음 슬라이드, 아래로 이동" : "다음 슬라이드, 오른쪽으로 이동",
+    firstSlideMessage: "첫 번째 슬라이드입니다",
+    lastSlideMessage: "마지막 슬라이드입니다",
+    paginationBulletMessage: "{{index}}번째 슬라이드로 이동",
+    slideLabelMessage: "{{index}} / {{slidesLength}}",
+    containerMessage: props.ariaLabel || `${totalSlides.value}개 슬라이드가 있는 이미지 캐러셀`,
+    containerRoleDescriptionMessage: "캐러셀",
+    itemRoleDescriptionMessage: "슬라이드",
+    slideRole: "group",
+    id: swiperId.value, // 각 인스턴스별 고유 ID
+  };
+
+  return typeof props.a11y === "object" ? { ...config, ...props.a11y } : config;
 });
 
 // Effect에 따른 slidesPerView 조정
@@ -382,6 +574,28 @@ const adjustedSlidesPerView = computed(() => {
     return 3;
   }
   return props.slidesPerView;
+});
+
+// Loop 모드 안전성 체크
+const safeLoopMode = computed(() => {
+  if (!props.loop) return false;
+  
+  const slideCount = props.slides?.length || 0;
+  const slidesPerViewCount = typeof adjustedSlidesPerView.value === 'number' 
+    ? adjustedSlidesPerView.value 
+    : 1;
+  
+  // Loop 모드가 제대로 작동하려면 슬라이드 수가 slidesPerView의 최소 2배는 되어야 함
+  const minSlidesForLoop = Math.max(slidesPerViewCount * 2, 3);
+  
+  if (slideCount < minSlidesForLoop) {
+    console.warn(
+      `Loop mode disabled: Need at least ${minSlidesForLoop} slides for slidesPerView=${slidesPerViewCount}, but only ${slideCount} slides provided.`
+    );
+    return false;
+  }
+  
+  return true;
 });
 
 // Effect별 spaceBetween 조정
@@ -421,10 +635,139 @@ const effectProps = computed(() => {
 });
 
 // ============================================================================
+// ACCESSIBILITY METHODS
+// ============================================================================
+
+const updateLiveRegion = (message: string) => {
+  if (props.announceSlideChanges) {
+    liveRegionText.value = message;
+    // Clear after announcement to avoid repetition
+    setTimeout(() => {
+      liveRegionText.value = "";
+    }, 1000);
+  }
+};
+
+// 추가적인 공지사항 관리
+const addAnnouncement = (message: string) => {
+  announcements.value.push(message);
+  // 3초 후 공지사항 제거
+  setTimeout(() => {
+    announcements.value = announcements.value.filter(a => a !== message);
+  }, 3000);
+};
+
+// 모션 감소 체크
+const shouldReduceMotion = () => {
+  if (props.reduceMotion) return true;
+  if (typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  return false;
+};
+
+// 스킵 링크 핸들러
+const skipToEndOfCarousel = (event: Event) => {
+  event.preventDefault();
+  const target = document.getElementById(skipLinkId.value);
+  if (target) {
+    target.focus();
+    addAnnouncement("캐러셀을 건너뛰었습니다");
+  }
+};
+
+// 포커스 트랩 관리
+const manageFocusTrap = () => {
+  if (!props.focusTrap) return;
+  
+  const container = document.querySelector(`.sc-swiper-${swiperId.value}`);
+  if (!container) return;
+  
+  const focusableElements = container.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  
+  if (focusableElements.length === 0) return;
+  
+  const firstElement = focusableElements[0] as HTMLElement;
+  const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+  
+  const handleKeyDown = (e: Event) => {
+    const keyboardEvent = e as KeyboardEvent;
+    if (keyboardEvent.key === 'Tab') {
+      if (keyboardEvent.shiftKey) {
+        if (document.activeElement === firstElement) {
+          keyboardEvent.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          keyboardEvent.preventDefault();
+          firstElement.focus();
+        }
+      }
+    }
+  };
+  
+  container.addEventListener('keydown', handleKeyDown);
+  
+  return () => {
+    container.removeEventListener('keydown', handleKeyDown);
+  };
+};
+
+// A11y 모듈에서 자동으로 처리되므로 별도 업데이트 불필요
+const updatePaginationAccessibility = () => {
+  // A11y 모듈에서 자동으로 처리됨
+};
+
+const toggleAutoplay = () => {
+  const swiper = swiperRef.value?.swiper;
+  if (!swiper) return;
+
+  if (isAutoplayPaused.value) {
+    swiper.autoplay.start();
+    isAutoplayPaused.value = false;
+    const message = "자동 슬라이드쇼가 재개되었습니다";
+    updateLiveRegion(message);
+    if (props.announceAutoplay) {
+      addAnnouncement(message);
+    }
+  } else {
+    swiper.autoplay.stop();
+    isAutoplayPaused.value = true;
+    const message = "자동 슬라이드쇼가 일시정지되었습니다";
+    updateLiveRegion(message);
+    if (props.announceAutoplay) {
+      addAnnouncement(message);
+    }
+  }
+};
+
+// ============================================================================
 // EVENT HANDLERS
 // ============================================================================
 const onSwiperInit = (swiper: any) => {
+  totalSlides.value = swiper.slides.length;
+  currentSlideIndex.value = swiper.activeIndex;
+  
+  // swiperRef에 실제 swiper 인스턴스 설정
+  if (swiperRef.value) {
+    swiperRef.value.swiper = swiper;
+  }
+  
+  // Update pagination accessibility
+  setTimeout(() => {
+    updatePaginationAccessibility();
+  }, 100);
+
   emit("init", swiper);
+
+  // 컨테이너 포커스 가능하게 설정
+  const container = document.querySelector(`.sc-swiper-${swiperId.value}`);
+  if (container && !container.getAttribute('tabindex')) {
+    container.setAttribute('tabindex', '0');
+  }
 
   // Vertical direction일 때 navigation 버튼 위치 강제 조정
   if (props.direction === "vertical") {
@@ -433,7 +776,252 @@ const onSwiperInit = (swiper: any) => {
 };
 
 const onSlideChange = (swiper: any) => {
+  currentSlideIndex.value = swiper.activeIndex;
+  
+  // Update pagination accessibility
+  updatePaginationAccessibility();
+  
+  // Announce slide change
+  const currentSlide = props.slides?.[swiper.activeIndex];
+  const slideNumber = swiper.activeIndex + 1;
+  const message = currentSlide?.title 
+    ? `Slide ${slideNumber}: ${currentSlide.title}`
+    : `Slide ${slideNumber} of ${totalSlides.value}`;
+  
+  updateLiveRegion(message);
+
   emit("slideChange", { activeIndex: swiper.activeIndex });
+};
+
+// 키보드 이벤트 핸들러 - 현재 포커스된 swiper만 제어
+const onSwiperKeydown = (swiper: any, event: KeyboardEvent) => {
+  // 현재 swiper가 포커스되어 있는지 확인
+  const swiperContainer = document.querySelector(`.sc-swiper-${swiperId.value}`);
+  const activeElement = document.activeElement;
+  
+  // 더 정확한 포커스 체크: 현재 swiper 컨테이너 내부에 포커스가 있는지 확인
+  if (!swiperContainer?.contains(activeElement)) {
+    return; // 현재 swiper에 포커스가 없으면 이벤트 무시
+  }
+
+  // 다른 swiper가 이미 이벤트를 처리했는지 확인 (이벤트 버블링 방지)
+  if (event.defaultPrevented) {
+    return;
+  }
+
+  const { key } = event;
+  let handled = false;
+
+  if (key === 'ArrowLeft' || (key === 'ArrowUp' && props.direction === 'vertical')) {
+    event.preventDefault();
+    event.stopPropagation();
+    swiper.slidePrev();
+    updateLiveRegion("이전 슬라이드로 이동했습니다");
+    handled = true;
+  } else if (key === 'ArrowRight' || (key === 'ArrowDown' && props.direction === 'vertical')) {
+    event.preventDefault();
+    event.stopPropagation();
+    swiper.slideNext();
+    updateLiveRegion("다음 슬라이드로 이동했습니다");
+    handled = true;
+  } else if (key === 'Home') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiper.slideTo(0);
+    updateLiveRegion("첫 번째 슬라이드로 이동했습니다");
+    addAnnouncement("첫 번째 슬라이드");
+    handled = true;
+  } else if (key === 'End') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiper.slideTo(totalSlides.value - 1);
+    updateLiveRegion("마지막 슬라이드로 이동했습니다");
+    addAnnouncement("마지막 슬라이드");
+    handled = true;
+  } else if (key === 'Escape' && props.autoplay && !isAutoplayPaused.value) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleAutoplay();
+    handled = true;
+  } else if (key === 'PageUp') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiper.slidePrev();
+    handled = true;
+  } else if (key === 'PageDown') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiper.slideNext();
+    handled = true;
+  }
+
+  // 키보드 이벤트 처리 완료
+};
+
+// 컨테이너 키보드 이벤트 핸들러 (우선순위 높음)
+const onContainerKeydown = (event: KeyboardEvent) => {
+  // 이 컨테이너가 포커스되어 있지 않으면 이벤트 무시
+  if (!isContainerFocused.value) {
+    return;
+  }
+
+  const swiper = swiperRef.value?.swiper;
+  if (!swiper) {
+    // 대체 방법: DOM에서 직접 swiper 인스턴스 찾기
+    const swiperElement = document.querySelector(`.sc-swiper-${swiperId.value} .swiper`);
+    if (swiperElement && (swiperElement as any).swiper) {
+      const directSwiper = (swiperElement as any).swiper;
+      handleKeyboardEvent(directSwiper, event);
+      return;
+    }
+    return;
+  }
+
+  handleKeyboardEvent(swiper, event);
+};
+
+// 키보드 이벤트 처리 함수 (공통 로직)
+const handleKeyboardEvent = (swiperInstance: any, event: KeyboardEvent) => {
+  const { key } = event;
+
+  if (key === 'ArrowLeft' || (key === 'ArrowUp' && props.direction === 'vertical')) {
+    event.preventDefault();
+    event.stopPropagation();
+    swiperInstance.slidePrev();
+    updateLiveRegion("이전 슬라이드로 이동했습니다");
+  } else if (key === 'ArrowRight' || (key === 'ArrowDown' && props.direction === 'vertical')) {
+    event.preventDefault();
+    event.stopPropagation();
+    swiperInstance.slideNext();
+    updateLiveRegion("다음 슬라이드로 이동했습니다");
+  } else if (key === 'Home') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiperInstance.slideTo(0);
+    updateLiveRegion("첫 번째 슬라이드로 이동했습니다");
+    addAnnouncement("첫 번째 슬라이드");
+  } else if (key === 'End') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiperInstance.slideTo(totalSlides.value - 1);
+    updateLiveRegion("마지막 슬라이드로 이동했습니다");
+    addAnnouncement("마지막 슬라이드");
+  } else if (key === 'Escape' && props.autoplay && !isAutoplayPaused.value) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleAutoplay();
+  } else if (key === 'PageUp') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiperInstance.slidePrev();
+  } else if (key === 'PageDown') {
+    event.preventDefault();
+    event.stopPropagation();
+    swiperInstance.slideNext();
+  }
+};
+
+// 컨테이너 포커스 핸들러
+const onContainerFocus = (event: FocusEvent) => {
+  isContainerFocused.value = true;
+  
+  // 다른 컨테이너들의 포커스 해제
+  const allContainers = document.querySelectorAll('[class*="sc-swiper-"]');
+  allContainers.forEach(container => {
+    if (container !== event.currentTarget) {
+      (container as HTMLElement).style.outline = '';
+    }
+  });
+  
+  // 현재 컨테이너 포커스 스타일 적용
+  const currentContainer = event.currentTarget as HTMLElement;
+  currentContainer.style.outline = '3px solid #007aff';
+  currentContainer.style.outlineOffset = '2px';
+};
+
+// 컨테이너 블러 핸들러
+const onContainerBlur = (event: FocusEvent) => {
+  const container = event.currentTarget as HTMLElement;
+  const relatedTarget = event.relatedTarget as HTMLElement;
+  
+  // 포커스가 컨테이너 외부로 이동한 경우에만 블러 처리
+  if (!relatedTarget || !container.contains(relatedTarget)) {
+    isContainerFocused.value = false;
+    container.style.outline = '';
+    container.style.outlineOffset = '';
+  }
+};
+
+const onSlideKeydown = (event: KeyboardEvent, index: number) => {
+  const { key } = event;
+  const swiper = swiperRef.value?.swiper;
+  if (!swiper) return;
+
+  switch (key) {
+    case 'Enter':
+    case ' ':
+      event.preventDefault();
+      event.stopPropagation();
+      if (index !== currentSlideIndex.value) {
+        swiper.slideTo(index);
+      }
+      break;
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      event.preventDefault();
+      event.stopPropagation();
+      swiper.slidePrev();
+      break;
+    case 'ArrowRight':
+    case 'ArrowDown':
+      event.preventDefault();
+      event.stopPropagation();
+      swiper.slideNext();
+      break;
+  }
+};
+
+const onSlideFocus = (index: number) => {
+  const swiper = swiperRef.value?.swiper;
+  if (swiper && index !== currentSlideIndex.value) {
+    swiper.slideTo(index);
+  }
+};
+
+const onNavigationKeydown = (event: KeyboardEvent, direction: 'prev' | 'next') => {
+  const { key } = event;
+  if (key === 'Enter' || key === ' ') {
+    event.preventDefault();
+    event.stopPropagation();
+    const swiper = swiperRef.value?.swiper;
+    if (swiper) {
+      if (direction === 'prev') {
+        swiper.slidePrev();
+      } else {
+        swiper.slideNext();
+      }
+    }
+  }
+};
+
+const onNavigationFocus = (event: FocusEvent) => {
+  const target = event.target as HTMLElement;
+  target.style.outline = '2px solid #007aff';
+  target.style.outlineOffset = '2px';
+};
+
+const onNavigationBlur = (event: FocusEvent) => {
+  const target = event.target as HTMLElement;
+  target.style.outline = '';
+  target.style.outlineOffset = '';
+};
+
+const onAutoplayKeydown = (event: KeyboardEvent) => {
+  const { key } = event;
+  if (key === 'Enter' || key === ' ') {
+    event.preventDefault();
+    toggleAutoplay();
+  }
 };
 
 // 클릭 관련 상태 관리
@@ -534,9 +1122,20 @@ const adjustVerticalNavigationButtons = () => {
 };
 
 onMounted(() => {
-  // String selector 사용으로 DOM 참조 문제가 해결되어 별도 초기화 불필요
+  // 컨테이너 초기 설정
+  setTimeout(() => {
+    const container = document.querySelector(`.sc-swiper-${swiperId.value}`);
+    if (container) {
+      if (!container.getAttribute('tabindex')) {
+        container.setAttribute('tabindex', '0');
+      }
+      if (!container.getAttribute('aria-label')) {
+        container.setAttribute('aria-label', `슬라이드 컨테이너 ${swiperId.value}`);
+      }
+    }
+  }, 50);
 
-  // Vertical direction일 때 MutationObserver로 버튼 위치 지속적 조정
+  // Vertical direction 버튼 위치 조정
   if (props.direction === "vertical") {
     const container = document.querySelector(`.sc-swiper-${swiperId.value}`);
     if (container) {
@@ -551,23 +1150,40 @@ onMounted(() => {
         attributeFilter: ["style", "class"],
       });
 
-      // 윈도우 리사이즈 이벤트 추가
       const handleResize = () => {
         adjustVerticalNavigationButtons();
       };
 
       window.addEventListener("resize", handleResize);
 
-      // 컴포넌트 언마운트 시 observer와 이벤트 리스너 정리
       onUnmounted(() => {
         observer.disconnect();
         window.removeEventListener("resize", handleResize);
       });
     }
 
-    // 초기 조정
     setTimeout(adjustVerticalNavigationButtons, 100);
   }
+
+  // 포커스 트랩 설정
+  let cleanupFocusTrap: (() => void) | undefined;
+  if (props.focusTrap) {
+    cleanupFocusTrap = manageFocusTrap();
+  }
+
+  // 모션 감소 설정 적용
+  if (shouldReduceMotion()) {
+    const container = document.querySelector(`.sc-swiper-${swiperId.value}`);
+    if (container) {
+      container.classList.add('sc-swiper--reduce-motion');
+    }
+  }
+
+  onUnmounted(() => {
+    if (cleanupFocusTrap) {
+      cleanupFocusTrap();
+    }
+  });
 });
 
 // 컴포넌트 언마운트 시 타임아웃 정리
@@ -587,16 +1203,110 @@ defineExpose({
   slideNext: () => swiperRef.value?.swiper?.slideNext(),
   slidePrev: () => swiperRef.value?.swiper?.slidePrev(),
   update: () => swiperRef.value?.swiper?.update(),
+  toggleAutoplay,
 });
 </script>
 
 <style scoped>
+/* Screen Reader Only 클래스 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Screen Reader Only - 포커스 시 표시 */
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  z-index: 1000;
+}
+
+/* Skip Link 스타일 */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  border-radius: 4px;
+  text-decoration: none;
+  z-index: 1000;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Autoplay Control 버튼 */
+.autoplay-control {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.autoplay-control:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.autoplay-control:focus {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
 /* ============================================================================
-   기본 스타일
+   기본 스타일 (기존 스타일 유지)
    ============================================================================ */
 .sc-swiper-container {
   position: relative;
   width: 100%;
+  outline: none; /* 기본 outline 제거 */
+}
+
+/* 포커스된 컨테이너 스타일 */
+.sc-swiper-container:focus {
+  outline: 3px solid #007aff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 포커스 시 추가 시각적 피드백 */
+.sc-swiper-container:focus-visible {
+  outline: 3px solid #007aff;
+  outline-offset: 2px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.2);
 }
 
 .sc-swiper-container .swiper {
@@ -889,7 +1599,7 @@ defineExpose({
 }
 
 /* ============================================================================
-   Navigation 스타일
+   Navigation 스타일 - 포커스 개선
    ============================================================================ */
 :deep(.swiper-button-next),
 :deep(.swiper-button-prev) {
@@ -910,6 +1620,12 @@ defineExpose({
   transform: scale(1.1) !important;
 }
 
+:deep(.swiper-button-next:focus),
+:deep(.swiper-button-prev:focus) {
+  outline: 2px solid #007aff !important;
+  outline-offset: 2px !important;
+}
+
 :deep(.swiper-button-next::after),
 :deep(.swiper-button-prev::after) {
   font-size: 16px !important;
@@ -921,7 +1637,7 @@ defineExpose({
 }
 
 /* ============================================================================
-   Pagination 스타일
+   Pagination 스타일 - 접근성 개선
    ============================================================================ */
 :deep(.swiper-pagination) {
   z-index: 10 !important;
@@ -932,6 +1648,13 @@ defineExpose({
   background: rgba(0, 0, 0, 0.3) !important;
   opacity: 1 !important;
   transition: all 0.3s ease !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+:deep(.swiper-pagination-bullet:focus) {
+  outline: 2px solid #007aff !important;
+  outline-offset: 2px !important;
 }
 
 :deep(.swiper-pagination-bullet-active) {
@@ -1192,9 +1915,136 @@ defineExpose({
 }
 
 /* ============================================================================
+   웹접근성 스타일
+   ============================================================================ */
+
+/* 모션 감소 설정 */
+.sc-swiper--reduce-motion :deep(.swiper-slide),
+.sc-swiper--reduce-motion :deep(.swiper-wrapper),
+.sc-swiper--reduce-motion :deep(.swiper-button-next),
+.sc-swiper--reduce-motion :deep(.swiper-button-prev),
+.sc-swiper--reduce-motion :deep(.swiper-pagination-bullet) {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+
+/* 고대비 모드 */
+.sc-swiper--high-contrast {
+  filter: contrast(150%);
+}
+
+.sc-swiper--high-contrast :deep(.swiper-button-next),
+.sc-swiper--high-contrast :deep(.swiper-button-prev) {
+  background: #000 !important;
+  color: #fff !important;
+  border: 2px solid #fff !important;
+}
+
+.sc-swiper--high-contrast :deep(.swiper-pagination-bullet) {
+  background: #000 !important;
+  border: 1px solid #fff !important;
+}
+
+.sc-swiper--high-contrast :deep(.swiper-pagination-bullet-active) {
+  background: #fff !important;
+  border: 1px solid #000 !important;
+}
+
+/* 포커스 트랩 모드 */
+.sc-swiper--focus-trap {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.sc-swiper--focus-trap:focus-within {
+  outline-color: #007aff;
+}
+
+/* ============================================================================
+   개선된 포커스 스타일
+   ============================================================================ */
+
+/* 모든 포커스 가능한 요소에 대한 고대비 포커스 표시 */
+:deep(.swiper-button-next):focus,
+:deep(.swiper-button-prev):focus,
+:deep(.swiper-pagination-bullet):focus,
+.autoplay-control:focus {
+  outline: 3px solid #007aff !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.3) !important;
+}
+
+/* 슬라이드 포커스 스타일 */
+:deep(.swiper-slide):focus {
+  outline: 2px solid #007aff !important;
+  outline-offset: 2px !important;
+  z-index: 10 !important;
+}
+
+/* 키보드 사용자를 위한 추가 시각적 피드백 */
+:deep(.swiper-button-next):focus:not(:hover),
+:deep(.swiper-button-prev):focus:not(:hover) {
+  transform: scale(1.1) !important;
+}
+
+/* Windows 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .sc-swiper-container {
+    outline: 1px solid;
+  }
+  
+  :deep(.swiper-button-next),
+  :deep(.swiper-button-prev) {
+    background: ButtonFace !important;
+    color: ButtonText !important;
+    border: 1px solid ButtonText !important;
+  }
+  
+  :deep(.swiper-pagination-bullet) {
+    background: ButtonText !important;
+    border: 1px solid ButtonFace !important;
+  }
+}
+
+/* 시각 장애인을 위한 추가 스타일 */
+@media (prefers-reduced-motion: reduce) {
+  .sc-swiper-container :deep(*) {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 터치 인터페이스에서 접근성 개선 */
+@media (hover: none) and (pointer: coarse) {
+  :deep(.swiper-button-next),
+  :deep(.swiper-button-prev) {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  
+  :deep(.swiper-pagination-bullet) {
+    width: 16px !important;
+    height: 16px !important;
+    margin: 0 8px !important;
+  }
+}
+
+/* ============================================================================
    반응형
    ============================================================================ */
 @media (max-width: 768px) {
+  .autoplay-control {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    top: 5px;
+    right: 5px;
+  }
+
   :deep(.swiper-button-next),
   :deep(.swiper-button-prev) {
     width: 36px;
@@ -1348,1449 +2198,3 @@ defineExpose({
   }
 }
 </style>
-
-
-\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-StoryBook
-\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-
-import ScSwiper from "./ScSwiper.vue";
-import type { Meta, StoryObj } from "@storybook/vue3";
-
-// 예시 슬라이드 데이터
-const mockSlides = [
-  {
-    id: "slide-1",
-    title: "Amazing Slide 1",
-    subtitle: "Beautiful gradient background",
-    description: "첫 번째 슬라이드입니다.",
-    background: "linear-gradient(45deg, #667eea, #764ba2)",
-    image: "https://picsum.photos/300/200?random=1",
-  },
-  {
-    id: "slide-2",
-    title: "Incredible Slide 2",
-    subtitle: "Stunning visual effects",
-    description: "두 번째 슬라이드입니다.",
-    background: "linear-gradient(45deg, #f093fb, #f5576c)",
-    image: "https://picsum.photos/300/200?random=2",
-  },
-  {
-    id: "slide-3",
-    title: "Awesome Slide 3",
-    subtitle: "Modern design approach",
-    description: "세 번째 슬라이드입니다.",
-    background: "linear-gradient(45deg, #4facfe, #00f2fe)",
-    image: "https://picsum.photos/300/200?random=3",
-  },
-  {
-    id: "slide-4",
-    title: "Fantastic Slide 4",
-    subtitle: "Interactive experience",
-    description: "네 번째 슬라이드입니다.",
-    background: "linear-gradient(45deg, #fa709a, #fee140)",
-    image: "https://picsum.photos/300/200?random=4",
-  },
-  {
-    id: "slide-5",
-    title: "Spectacular Slide 5",
-    subtitle: "Premium quality content",
-    description: "다섯 번째 슬라이드입니다.",
-    background: "linear-gradient(45deg, #a8edea, #fed6e3)",
-    image: "https://picsum.photos/300/200?random=5",
-  },
-];
-
-const meta: Meta<typeof ScSwiper> = {
-  title: "SHC/ScSwiper",
-  component: ScSwiper,
-  parameters: {
-    layout: "padded",
-    docs: {
-      description: {
-        component: `
-# ScSwiper 컴포넌트
-
-Swiper.js 기반의 고급 슬라이더 컴포넌트입니다. 8가지 시각적 효과와 다양한 옵션을 제공합니다.
-
-## 주요 기능
-- 🎯 **8가지 Effect**: Slide, Fade, Cube, Coverflow, Flip, Cards, Creative, Cylinder
-- 🎨 **테마 지원**: Default, Dark, Light
-- 📱 **반응형**: 모바일 최적화
-- 🎮 **Navigation & Pagination**: 다양한 스타일 지원
-- ⚡ **Autoplay**: 자동 재생 기능
-- 🎪 **3D Effects**: 입체적인 시각 효과
-
-## 내장 스타일
-컴포넌트에 \`.example-slide\`, \`.slide-content\` 스타일이 내장되어 있어 별도 스타일링 없이 바로 사용 가능합니다.
-        `,
-      },
-    },
-  },
-  args: {
-    slides: mockSlides,
-    slidesPerView: 1,
-    spaceBetween: 16,
-    pagination: true,
-    paginationType: "bullets",
-    navigation: true,
-    autoplay: false,
-    loop: false,
-    centeredSlides: false,
-    size: "medium",
-    theme: "default",
-    effect: "slide",
-    speed: 300,
-    direction: "horizontal",
-  },
-  argTypes: {
-    slides: {
-      description: "슬라이드 데이터 배열",
-      table: {
-        type: { summary: "Array<SlideData>" },
-      },
-    },
-    effect: {
-      control: "radio",
-      options: ["slide", "fade", "cube", "coverflow", "flip", "cards", "creative", "cylinder"],
-      description: "슬라이더 전환 효과",
-      table: {
-        type: {
-          summary: `"slide" | "fade" | "cube" | "coverflow" | "flip" | "cards" | "creative" | "cylinder"`,
-        },
-        defaultValue: { summary: "slide" },
-      },
-    },
-    size: {
-      control: "radio",
-      options: ["small", "medium", "large"],
-      description: "슬라이더 크기",
-      table: {
-        type: { summary: `"small" | "medium" | "large"` },
-        defaultValue: { summary: "medium" },
-      },
-    },
-    theme: {
-      control: "radio",
-      options: ["default", "dark", "light"],
-      description: "테마 스타일",
-      table: {
-        type: { summary: `"default" | "dark" | "light"` },
-        defaultValue: { summary: "default" },
-      },
-    },
-    paginationType: {
-      control: "radio",
-      options: ["bullets", "fraction", "progressbar", "custom"],
-      description: "페이지네이션 타입",
-      table: {
-        type: { summary: `"bullets" | "fraction" | "progressbar" | "custom"` },
-        defaultValue: { summary: "bullets" },
-      },
-    },
-    slidesPerView: {
-      control: { type: "number", min: 1, max: 5, step: 1 },
-      description: "동시에 보여줄 슬라이드 수",
-      table: {
-        type: { summary: "number | 'auto'" },
-        defaultValue: { summary: "1" },
-      },
-    },
-    spaceBetween: {
-      control: { type: "number", min: 0, max: 50, step: 4 },
-      description: "슬라이드 간 간격(px)",
-      table: {
-        type: { summary: "number" },
-        defaultValue: { summary: "0" },
-      },
-    },
-    speed: {
-      control: { type: "number", min: 100, max: 1000, step: 100 },
-      description: "전환 애니메이션 속도(ms)",
-      table: {
-        type: { summary: "number" },
-        defaultValue: { summary: "300" },
-      },
-    },
-    direction: {
-      control: "radio",
-      options: ["horizontal", "vertical"],
-      description: "슬라이드 방향",
-      table: {
-        type: { summary: `"horizontal" | "vertical"` },
-        defaultValue: { summary: "horizontal" },
-      },
-    },
-    pagination: {
-      control: "boolean",
-      description: "페이지네이션 표시 여부",
-      table: {
-        type: { summary: "boolean" },
-        defaultValue: { summary: "true" },
-      },
-    },
-    navigation: {
-      control: "boolean",
-      description: "좌우 네비게이션 버튼 표시 여부",
-      table: {
-        type: { summary: "boolean" },
-        defaultValue: { summary: "true" },
-      },
-    },
-    autoplay: {
-      control: "boolean",
-      description: "자동 재생 여부",
-      table: {
-        type: { summary: "boolean | object" },
-        defaultValue: { summary: "false" },
-      },
-    },
-    loop: {
-      control: "boolean",
-      description: "무한 루프 여부",
-      table: {
-        type: { summary: "boolean" },
-        defaultValue: { summary: "false" },
-      },
-    },
-    centeredSlides: {
-      control: "boolean",
-      description: "슬라이드 중앙 정렬 여부",
-      table: {
-        type: { summary: "boolean" },
-        defaultValue: { summary: "false" },
-      },
-    },
-  },
-};
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-export const Default: Story = {
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "기본 슬라이드 효과를 사용한 표준 구성입니다. 내장된 example-slide 스타일을 활용합니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-// 8가지 Effect 스토리들
-export const SlideEffect: Story = {
-  args: {
-    effect: "slide",
-    slidesPerView: 1,
-    spaceBetween: 30,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "기본적인 좌우 슬라이딩 효과입니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const FadeEffect: Story = {
-  args: {
-    effect: "fade",
-    autoplay: {
-      delay: 3000,
-      disableOnInteraction: false,
-    },
-    speed: 500,
-    paginationType: "fraction",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "부드러운 페이드 인/아웃 전환 효과입니다. 자동 재생과 fraction 페이지네이션을 사용합니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const CubeEffect: Story = {
-  args: {
-    effect: "cube",
-    speed: 600,
-    paginationType: "bullets",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "3D 큐브 회전 효과입니다. 입체적인 회전 애니메이션을 제공합니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const CoverflowEffect: Story = {
-  args: {
-    effect: "coverflow",
-    slidesPerView: "auto",
-    spaceBetween: 30,
-    centeredSlides: true,
-    paginationType: "progressbar",
-    speed: 400,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "iTunes 스타일의 3D 커버플로우 효과입니다. 활성 슬라이드가 강조됩니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const FlipEffect: Story = {
-  args: {
-    effect: "flip",
-    speed: 600,
-    paginationType: "bullets",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "카드 뒤집기 효과입니다. X축 기준 회전 애니메이션을 제공합니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const CardsEffect: Story = {
-  args: {
-    effect: "cards",
-    speed: 400,
-    paginationType: "custom",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "카드 스택 효과입니다. 카드가 쌓인 형태로 전환됩니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const CreativeEffect: Story = {
-  args: {
-    effect: "creative",
-    speed: 700,
-    paginationType: "fraction",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "창의적인 3D 전환 효과입니다. 커스텀 애니메이션을 제공합니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const CylinderEffect: Story = {
-  args: {
-    effect: "cylinder",
-    slidesPerView: 3,
-    spaceBetween: 0,
-    centeredSlides: true,
-    speed: 800,
-    paginationType: "bullets",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "원통형 3D 회전 효과입니다. 활성 슬라이드가 원통 위로 상승하는 독특한 효과를 제공합니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-// 테마 & 크기 스토리들
-export const DarkTheme: Story = {
-  args: {
-    theme: "dark",
-    size: "large",
-    autoplay: {
-      delay: 2500,
-      disableOnInteraction: false,
-    },
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "다크 테마 적용 예시입니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const MultipleSlides: Story = {
-  args: {
-    slidesPerView: 3,
-    spaceBetween: 16,
-    centeredSlides: false,
-    size: "medium",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "여러 슬라이드를 동시에 보여주는 예시입니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      return { args };
-    },
-    template: `
-      <ScSwiper v-bind="args">
-        <template #slide="{ item, index }">
-          <div class="example-slide" :style="{ background: item.background }">
-            <div class="slide-content">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.subtitle }}</p>
-              <span class="slide-number">{{ index + 1 }}</span>
-            </div>
-          </div>
-        </template>
-      </ScSwiper>
-    `,
-  }),
-};
-
-export const WithClickEvents: Story = {
-  args: {
-    effect: "slide",
-    slidesPerView: 1,
-    spaceBetween: 20,
-    pagination: true,
-    navigation: true,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "슬라이드 클릭 이벤트를 테스트할 수 있는 예시입니다. 싱글클릭과 더블클릭을 모두 지원합니다.",
-      },
-    },
-  },
-  render: (args: any) => ({
-    components: { ScSwiper },
-    setup() {
-      const handleSlideClick = (event: any) => {
-        console.log("슬라이드 클릭:", {
-          index: event.index,
-          title: event.slideData?.title,
-          isActiveSlide: event.isActiveSlide,
-          clickType: event.clickType,
-        });
-        alert(`슬라이드 ${event.index + 1} 클릭! (${event.clickType})`);
-      };
-
-      const handleSlideDoubleClick = (event: any) => {
-        console.log("슬라이드 더블클릭:", {
-          index: event.index,
-          title: event.slideData?.title,
-        });
-        alert(`슬라이드 ${event.index + 1} 더블클릭!`);
-      };
-
-      return { args, handleSlideClick, handleSlideDoubleClick };
-    },
-    template: `
-      <div>
-        <p style="margin-bottom: 20px; color: #666; font-size: 14px;">
-          💡 슬라이드를 클릭하거나 더블클릭해보세요! 콘솔과 알림으로 이벤트를 확인할 수 있습니다.
-        </p>
-        <ScSwiper 
-          v-bind="args" 
-          @slide-click="handleSlideClick"
-          @slide-double-click="handleSlideDoubleClick"
-        >
-          <template #slide="{ item, index }">
-            <div class="example-slide" :style="{ background: item.background, cursor: 'pointer' }">
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-                <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
-                  클릭 또는 더블클릭
-                </div>
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    `,
-  }),
-};
-
-
-\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-playground
-\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-<route lang="yaml">
-meta:
-  title: Swiper
-  description: SHC UI Swiper 컴포넌트입니다.
-  author: 이강
-  category: Swiper
-</route>
-
-<template>
-  <div class="swiper-examples-page">
-    <!-- Header -->
-    <div class="page-header">
-      <h1>ScSwiper 컴포넌트 예제</h1>
-      <p>각 Effect별 개별 예제를 통한 ScSwiper 활용법</p>
-    </div>
-
-    <!-- Example 1: Slide Effect -->
-    <div class="example-section">
-      <h2 class="example-title">1. Slide Effect</h2>
-      <p class="example-description">기본적인 좌우 슬라이딩 효과</p>
-      <div class="swiper-container">
-        <ScSwiper
-          swiper-id="slide-example"
-          :slides="slideExampleData"
-          effect="slide"
-          :slidesPerView="1"
-          :spaceBetween="30"
-          :centeredSlides="false"
-          :pagination="true"
-          paginationType="bullets"
-          :navigation="true"
-          :loop="false"
-          size="medium"
-          theme="default"
-          :speed="300"
-          @slide-click="onSlideClick"
-          @slide-double-click="onSlideDoubleClick"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-                <img
-                  v-if="item.image"
-                  :src="item.image"
-                  :alt="item.title || `Slide ${index + 1}`"
-                />
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 2: Fade Effect -->
-    <div class="example-section">
-      <h2 class="example-title">2. Fade Effect</h2>
-      <p class="example-description">부드러운 페이드 인/아웃 전환</p>
-      <div class="swiper-container">
-        <ScSwiper
-          swiper-id="fade-example"
-          :slides="fadeExampleData"
-          effect="fade"
-          :slidesPerView="1"
-          :spaceBetween="0"
-          :centeredSlides="false"
-          :pagination="true"
-          paginationType="fraction"
-          :navigation="true"
-          :loop="false"
-          size="large"
-          theme="dark"
-          :speed="500"
-          @slide-click="onSlideClick"
-          @slide-double-click="onSlideDoubleClick"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 3: Cube Effect -->
-    <div class="example-section">
-      <h2 class="example-title">3. Cube Effect</h2>
-      <p class="example-description">3D 큐브 회전 효과</p>
-      <div class="swiper-container">
-        <ScSwiper
-          swiper-id="cube-example"
-          :slides="cubeExampleData"
-          effect="cube"
-          :slidesPerView="1"
-          :spaceBetween="0"
-          :centeredSlides="false"
-          :pagination="true"
-          paginationType="bullets"
-          :navigation="true"
-          :loop="false"
-          size="medium"
-          theme="light"
-          :speed="600"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 4: Coverflow Effect -->
-    <div class="example-section">
-      <h2 class="example-title">4. Coverflow Effect</h2>
-      <p class="example-description">3D 커버플로우 스타일</p>
-      <div
-        class="swiper-container"
-        style="height: 500px"
-      >
-        <ScSwiper
-          swiper-id="coverflow-example"
-          :slides="coverflowExampleData"
-          effect="coverflow"
-          slidesPerView="auto"
-          :spaceBetween="50"
-          :centeredSlides="true"
-          :pagination="true"
-          paginationType="progressbar"
-          :navigation="true"
-          :loop="false"
-          size="large"
-          theme="default"
-          :speed="400"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 5: Flip Effect -->
-    <div class="example-section">
-      <h2 class="example-title">5. Flip Effect</h2>
-      <p class="example-description">카드 뒤집기 효과</p>
-      <div class="swiper-container">
-        <ScSwiper
-          swiper-id="flip-example"
-          :slides="flipExampleData"
-          effect="flip"
-          :slidesPerView="1"
-          :spaceBetween="0"
-          :centeredSlides="false"
-          :pagination="true"
-          paginationType="bullets"
-          :navigation="true"
-          :loop="false"
-          size="medium"
-          theme="dark"
-          :speed="600"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-                <img
-                  v-if="item.image"
-                  :src="item.image"
-                  :alt="item.title || `Slide ${index + 1}`"
-                />
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 6: Cards Effect -->
-    <div class="example-section">
-      <h2 class="example-title">6. Cards Effect</h2>
-      <p class="example-description">카드 스택 효과</p>
-      <div class="swiper-container">
-        <ScSwiper
-          swiper-id="cards-example"
-          :slides="cardsExampleData"
-          effect="cards"
-          :slidesPerView="1"
-          :spaceBetween="0"
-          :centeredSlides="false"
-          :pagination="true"
-          paginationType="custom"
-          :navigation="true"
-          :loop="false"
-          size="medium"
-          theme="light"
-          :speed="400"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 7: Creative Effect -->
-    <div class="example-section">
-      <h2 class="example-title">7. Creative Effect</h2>
-      <p class="example-description">창의적인 3D 전환 효과</p>
-      <div class="swiper-container">
-        <ScSwiper
-          swiper-id="creative-example"
-          :slides="creativeExampleData"
-          effect="creative"
-          :slidesPerView="1"
-          :spaceBetween="0"
-          :centeredSlides="false"
-          :pagination="true"
-          paginationType="fraction"
-          :navigation="true"
-          :loop="false"
-          size="large"
-          theme="default"
-          :speed="700"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-                <img
-                  v-if="item.image"
-                  :src="item.image"
-                  :alt="item.title || `Slide ${index + 1}`"
-                />
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 8: Cylinder Effect -->
-    <div class="example-section">
-      <h2 class="example-title">8. Cylinder Effect</h2>
-      <p class="example-description">원통형 3D 회전 효과 (커스텀)</p>
-      <div class="swiper-container">
-        <ScSwiper
-          swiper-id="cylinder-example"
-          :slides="cylinderExampleData"
-          effect="cylinder"
-          :slidesPerView="3"
-          :spaceBetween="0"
-          :centeredSlides="true"
-          :pagination="true"
-          paginationType="bullets"
-          :navigation="true"
-          :loop="false"
-          size="large"
-          theme="dark"
-          :speed="800"
-          @slide-click="onSlideClick"
-          @slide-double-click="onSlideDoubleClick"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-                <img
-                  v-if="item.image"
-                  :src="item.image"
-                  :alt="item.title || `Slide ${index + 1}`"
-                />
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-
-    <!-- Example 9: Vertical Direction -->
-    <div class="example-section">
-      <h2 class="example-title">9. Vertical Direction</h2>
-      <p class="example-description">세로 방향 스와이프 (slide와 fade 효과만 지원)</p>
-      <div class="swiper-container swiper-container--vertical">
-        <ScSwiper
-          swiper-id="vertical-example"
-          :slides="verticalExampleData"
-          effect="slide"
-          direction="vertical"
-          :slidesPerView="1"
-          :spaceBetween="20"
-          :centeredSlides="false"
-          :pagination="true"
-          paginationType="bullets"
-          :navigation="true"
-          :loop="false"
-          size="large"
-          theme="default"
-          :speed="400"
-          @slide-click="onSlideClick"
-          @slide-double-click="onSlideDoubleClick"
-        >
-          <template #slide="{ item, index }">
-            <div
-              class="example-slide clickable-slide"
-              :style="{ background: item.background }"
-            >
-              <div class="slide-content">
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.subtitle }}</p>
-                <span class="slide-number">{{ index + 1 }}</span>
-                <img
-                  v-if="item.image"
-                  :src="item.image"
-                  :alt="item.title || `Slide ${index + 1}`"
-                />
-              </div>
-            </div>
-          </template>
-        </ScSwiper>
-      </div>
-    </div>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { ref } from "vue";
-import ScSwiper from "~/components/shc/swiper/ScSwiper.vue";
-
-// ============================================================================
-// EVENT HANDLERS
-// ============================================================================
-const onSlideClick = (event: any) => {
-  console.log("슬라이드 클릭:", {
-    index: event.index,
-    title: event.slideData?.title,
-    isActiveSlide: event.isActiveSlide,
-    clickType: event.clickType,
-  });
-
-  // 실제 프로젝트에서는 라우팅, 모달 열기 등의 로직을 구현
-  if (event.isActiveSlide) {
-    console.log("현재 활성 슬라이드 클릭됨");
-  }
-};
-
-const onSlideDoubleClick = (event: any) => {
-  console.log("슬라이드 더블클릭:", {
-    index: event.index,
-    title: event.slideData?.title,
-  });
-
-  // 실제 프로젝트에서는 상세 페이지로 이동 등의 로직을 구현
-  console.log("더블클릭으로 상세 페이지 이동");
-};
-
-// ============================================================================
-// TYPES
-// ============================================================================
-interface SlideData {
-  id: string;
-  title: string;
-  subtitle: string;
-  background: string;
-  image?: string;
-}
-
-// ============================================================================
-// SLIDE DATA FOR EACH EFFECT
-// ============================================================================
-
-// 1. Slide Effect Data
-const slideExampleData = ref<SlideData[]>([
-  {
-    id: "slide-1",
-    title: "첫 번째 슬라이드",
-    subtitle: "기본 슬라이딩 효과",
-    background: "linear-gradient(45deg, #667eea, #764ba2)",
-    image: "https://picsum.photos/200/100",
-  },
-  {
-    id: "slide-2",
-    title: "두 번째 슬라이드",
-    subtitle: "좌우 이동 전환",
-    background: "linear-gradient(45deg, #f093fb, #f5576c)",
-    image: "https://picsum.photos/200/200",
-  },
-  {
-    id: "slide-3",
-    title: "세 번째 슬라이드",
-    subtitle: "자연스러운 움직임",
-    background: "linear-gradient(45deg, #4facfe, #00f2fe)",
-    image: "https://picsum.photos/200/300",
-  },
-]);
-
-// 2. Fade Effect Data
-const fadeExampleData = ref<SlideData[]>([
-  {
-    id: "fade-1",
-    title: "페이드 인",
-    subtitle: "부드러운 나타남",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: "fade-2",
-    title: "페이드 아웃",
-    subtitle: "자연스러운 사라짐",
-    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: "fade-3",
-    title: "페이드 전환",
-    subtitle: "투명도 변화",
-    background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-    image: "https://picsum.photos/200/300",
-  },
-]);
-
-// 3. Cube Effect Data
-const cubeExampleData = ref<SlideData[]>([
-  {
-    id: "cube-1",
-    title: "큐브 회전",
-    subtitle: "3D 정육면체",
-    background: "linear-gradient(45deg, #fa709a, #fee140)",
-    image: "https://picsum.photos/200/100",
-  },
-  {
-    id: "cube-2",
-    title: "입체 전환",
-    subtitle: "공간감 있는 이동",
-    background: "linear-gradient(45deg, #a8edea, #fed6e3)",
-    image: "https://picsum.photos/200/200",
-  },
-  {
-    id: "cube-3",
-    title: "회전 효과",
-    subtitle: "역동적인 움직임",
-    background: "linear-gradient(45deg, #ffecd2, #fcb69f)",
-    image: "https://picsum.photos/200/400",
-  },
-]);
-
-// 4. Coverflow Effect Data
-const coverflowExampleData = ref<SlideData[]>([
-  {
-    id: "coverflow-1",
-    title: "커버플로우 1",
-    subtitle: "iTunes 스타일",
-    background: "linear-gradient(45deg, #ff9a9e, #fecfef)",
-  },
-  {
-    id: "coverflow-2",
-    title: "커버플로우 2",
-    subtitle: "앨범 커버 회전",
-    background: "linear-gradient(45deg, #a8edea, #fed6e3)",
-  },
-  {
-    id: "coverflow-3",
-    title: "커버플로우 3",
-    subtitle: "3D 회전 뷰",
-    background: "linear-gradient(45deg, #fbc2eb, #a6c1ee)",
-  },
-  {
-    id: "coverflow-4",
-    title: "커버플로우 4",
-    subtitle: "원근감 효과",
-    background: "linear-gradient(45deg, #fa709a, #fee140)",
-  },
-  {
-    id: "coverflow-5",
-    title: "커버플로우 5",
-    subtitle: "깊이감 표현",
-    background: "linear-gradient(45deg, #667eea, #764ba2)",
-  },
-]);
-
-// 5. Flip Effect Data
-const flipExampleData = ref<SlideData[]>([
-  {
-    id: "flip-1",
-    title: "카드 앞면",
-    subtitle: "X축 회전",
-    background: "linear-gradient(45deg, #667eea, #764ba2)",
-  },
-  {
-    id: "flip-2",
-    title: "카드 뒷면",
-    subtitle: "뒤집기 효과",
-    background: "linear-gradient(45deg, #f093fb, #f5576c)",
-  },
-  {
-    id: "flip-3",
-    title: "카드 정보",
-    subtitle: "플립 애니메이션",
-    background: "linear-gradient(45deg, #4facfe, #00f2fe)",
-  },
-]);
-
-// 6. Cards Effect Data
-const cardsExampleData = ref<SlideData[]>([
-  {
-    id: "cards-1",
-    title: "골드 카드",
-    subtitle: "스택 효과",
-    background: "linear-gradient(45deg, #FFD700, #FFA500)",
-  },
-  {
-    id: "cards-2",
-    title: "실버 카드",
-    subtitle: "카드 더미",
-    background: "linear-gradient(45deg, #C0C0C0, #808080)",
-  },
-  {
-    id: "cards-3",
-    title: "플래티넘 카드",
-    subtitle: "쌓인 형태",
-    background: "linear-gradient(45deg, #E5E4E2, #BCC6CC)",
-  },
-]);
-
-// 7. Creative Effect Data
-const creativeExampleData = ref<SlideData[]>([
-  {
-    id: "creative-1",
-    title: "창의적 전환 1",
-    subtitle: "커스텀 3D 효과",
-    background: "linear-gradient(45deg, #667eea, #764ba2)",
-  },
-  {
-    id: "creative-2",
-    title: "창의적 전환 2",
-    subtitle: "독특한 애니메이션",
-    background: "linear-gradient(45deg, #f093fb, #f5576c)",
-  },
-  {
-    id: "creative-3",
-    title: "창의적 전환 3",
-    subtitle: "창의적 움직임",
-    background: "linear-gradient(45deg, #4facfe, #00f2fe)",
-  },
-]);
-
-// 8. Cylinder Effect Data
-const cylinderExampleData = ref<SlideData[]>([
-  {
-    id: "cylinder-1",
-    title: "실린더 1",
-    subtitle: "원통형 회전",
-    background: "linear-gradient(45deg, #ff9a9e, #fecfef)",
-  },
-  {
-    id: "cylinder-2",
-    title: "실린더 2",
-    subtitle: "360도 회전",
-    background: "linear-gradient(45deg, #a8edea, #fed6e3)",
-  },
-  {
-    id: "cylinder-3",
-    title: "실린더 3",
-    subtitle: "입체 원통",
-    background: "linear-gradient(45deg, #fbc2eb, #a6c1ee)",
-  },
-  {
-    id: "cylinder-4",
-    title: "실린더 4",
-    subtitle: "3D 회전체",
-    background: "linear-gradient(45deg, #667eea, #764ba2)",
-  },
-]);
-
-// 9. Vertical Direction Data
-const verticalExampleData = ref<SlideData[]>([
-  {
-    id: "vertical-1",
-    title: "세로 스와이프 1",
-    subtitle: "위아래 이동",
-    background: "linear-gradient(180deg, #667eea, #764ba2)",
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: "vertical-2",
-    title: "세로 스와이프 2",
-    subtitle: "수직 방향 전환",
-    background: "linear-gradient(180deg, #f093fb, #f5576c)",
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: "vertical-3",
-    title: "세로 스와이프 3",
-    subtitle: "세로 슬라이딩",
-    background: "linear-gradient(180deg, #4facfe, #00f2fe)",
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: "vertical-4",
-    title: "세로 스와이프 4",
-    subtitle: "수직 스크롤",
-    background: "linear-gradient(180deg, #fa709a, #fee140)",
-    image: "https://picsum.photos/200/300",
-  },
-]);
-</script>
-
-<style scoped>
-.swiper-examples-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  padding: 40px 20px;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-}
-
-/* Header */
-.page-header {
-  text-align: center;
-  margin-bottom: 60px;
-}
-
-.page-header h1 {
-  font-size: 2.5em;
-  margin-bottom: 10px;
-  color: #1f2937;
-  font-weight: 700;
-}
-
-.page-header p {
-  font-size: 1.1em;
-  color: #6b7280;
-  margin-bottom: 0;
-}
-
-/* Example Sections */
-.example-section {
-  max-width: 1200px;
-  margin: 0 auto 60px;
-  background: white;
-  border-radius: 20px;
-  padding: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
-
-.example-title {
-  font-size: 1.8em;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 10px;
-}
-
-.example-description {
-  font-size: 1em;
-  color: #6b7280;
-  margin-bottom: 30px;
-  line-height: 1.6;
-}
-
-/* Swiper Container - 페이지별 레이아웃만 */
-.swiper-container {
-  height: 350px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-/* Vertical Direction Container */
-.swiper-container--vertical {
-  height: 450px; /* navigation 버튼 공간을 고려한 높이 조정 */
-}
-
-/* 클릭 가능한 슬라이드 스타일 */
-.clickable-slide {
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.clickable-slide:hover {
-  transform: scale(1.02);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.clickable-slide:active {
-  transform: scale(0.98);
-}
-
-/* 나머지 슬라이드 스타일은 ScSwiper 컴포넌트 내장 스타일 사용 */
-
-/* Responsive */
-@media (max-width: 768px) {
-  .swiper-examples-page {
-    padding: 20px 10px;
-  }
-
-  .example-section {
-    margin-bottom: 40px;
-    padding: 20px;
-  }
-
-  .swiper-container {
-    height: 280px;
-  }
-
-  .swiper-container--vertical {
-    height: 400px; /* 모바일에서 navigation 버튼 공간을 고려한 높이 조정 */
-  }
-}
-</style>
-
-
-
