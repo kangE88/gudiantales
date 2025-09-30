@@ -82,7 +82,8 @@ meta:
 import { BottomSheet } from "@/components/BottomSheet";
 import { TextDropdown } from "@/components/Dropdown";
 import { InputField } from "@/components/InputField";
-import { computed, onMounted, ref } from "vue";
+import { useDebounceFn, useElementSize, useToggle } from "@vueuse/core";
+import { computed, ref } from "vue";
 
 // 통신사 목록
 const carriers = ref<string[]>([
@@ -102,148 +103,121 @@ const selectedCarrier = ref<string>("");
 const phoneNumber = ref<string>("");
 const phoneError = ref<string>("");
 
-// BottomSheet 열림 상태
-const isCarrierBottomSheetOpen = ref<boolean>(false);
+// BottomSheet 열림 상태 - useToggle 사용
+const [isCarrierBottomSheetOpen, toggleBottomSheet] = useToggle(false);
 
-// TextDropdown 참조
+// TextDropdown ref와 크기 추적
 const carrierDropdownRef = ref<InstanceType<typeof TextDropdown> | null>(null);
+const dropdownElement = computed(() => carrierDropdownRef.value?.$el as HTMLElement);
+const { width: dropdownWidth } = useElementSize(dropdownElement);
 
 // 통신사 BottomSheet 열기
 const openCarrierBottomSheet = () => {
-  isCarrierBottomSheetOpen.value = true;
+  toggleBottomSheet(true);
 };
 
 // 통신사 선택
 const selectCarrier = (carrier: string) => {
   selectedCarrier.value = carrier;
-  isCarrierBottomSheetOpen.value = false;
+  toggleBottomSheet(false);
 };
 
 // ============================================
-// 휴대폰 번호 정규식 및 유틸리티 함수
+// 휴대폰 번호 Composable
 // ============================================
+const usePhoneNumber = () => {
+  /**
+   * 숫자만 추출하는 함수
+   */
+  const extractNumbers = (value: string): string => {
+    return value.replace(/[^0-9]/g, "");
+  };
 
-/**
- * 숫자만 추출하는 함수
- */
-const extractNumbers = (value: string): string => {
-  return value.replace(/[^0-9]/g, "");
-};
+  /**
+   * 휴대폰 번호 포맷팅 함수 (하이픈 자동 추가)
+   */
+  const formatPhoneNumber = (value: string): string => {
+    const numbers = extractNumbers(value);
 
-/**
- * 휴대폰 번호 포맷팅 함수 (하이픈 자동 추가)
- * @param value - 입력된 번호
- * @returns 포맷팅된 번호 (예: 010-1234-5678)
- */
-const formatPhoneNumber = (value: string): string => {
-  const numbers = extractNumbers(value);
+    if (numbers.length <= 3) {
+      return numbers;
+    } else if (numbers.length <= 7) {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    } else if (numbers.length <= 11) {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+    }
 
-  if (numbers.length <= 3) {
-    return numbers;
-  } else if (numbers.length <= 7) {
-    return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-  } else if (numbers.length <= 11) {
     return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
-  }
+  };
 
-  // 11자리 초과시 11자리까지만 포맷팅
-  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+  /**
+   * 휴대폰 번호 유효성 검증 정규식
+   */
+  const phoneRegex = /^(010|011|016|017|018|019)-?\d{3,4}-?\d{4}$/;
+
+  /**
+   * 휴대폰 번호 유효성 검증
+   */
+  const isValidPhoneNumber = (value: string): boolean => {
+    const numbers = extractNumbers(value);
+    if (!numbers) return true;
+    if (numbers.length < 10 || numbers.length > 11) return false;
+    return phoneRegex.test(numbers);
+  };
+
+  /**
+   * 에러 메시지 반환
+   */
+  const getPhoneErrorMessage = (value: string): string => {
+    const numbers = extractNumbers(value);
+
+    if (!numbers) return "";
+    if (numbers.length < 10) return "휴대폰 번호를 정확히 입력해주세요.";
+    if (numbers.length > 11) return "휴대폰 번호는 최대 11자리입니다.";
+    if (!phoneRegex.test(numbers)) return "올바른 휴대폰 번호 형식이 아닙니다.";
+
+    return "";
+  };
+
+  return {
+    extractNumbers,
+    formatPhoneNumber,
+    isValidPhoneNumber,
+    getPhoneErrorMessage,
+  };
 };
 
-/**
- * 휴대폰 번호 유효성 검증 정규식
- * - 010, 011, 016, 017, 018, 019로 시작
- * - 총 10-11자리 (하이픈 제외)
- */
-const phoneRegex = /^(010|011|016|017|018|019)-?\d{3,4}-?\d{4}$/;
-
-/**
- * 휴대폰 번호 유효성 검증 함수
- * @param value - 검증할 전화번호
- * @returns 유효하면 true, 아니면 false
- */
-const isValidPhoneNumber = (value: string): boolean => {
-  const numbers = extractNumbers(value);
-
-  // 빈 값은 에러 아님
-  if (!numbers) return true;
-
-  // 10자리 또는 11자리 체크
-  if (numbers.length < 10 || numbers.length > 11) return false;
-
-  // 정규식 검증
-  return phoneRegex.test(numbers);
-};
-
-/**
- * 휴대폰 번호 에러 메시지 반환
- * @param value - 검증할 전화번호
- * @returns 에러 메시지 또는 빈 문자열
- */
-const getPhoneErrorMessage = (value: string): string => {
-  const numbers = extractNumbers(value);
-
-  if (!numbers) return "";
-
-  if (numbers.length < 10) {
-    return "휴대폰 번호를 정확히 입력해주세요.";
-  }
-
-  if (numbers.length > 11) {
-    return "휴대폰 번호는 최대 11자리입니다.";
-  }
-
-  if (!phoneRegex.test(numbers)) {
-    return "올바른 휴대폰 번호 형식이 아닙니다.";
-  }
-
-  return "";
-};
+// Composable 사용
+const { extractNumbers, formatPhoneNumber, isValidPhoneNumber, getPhoneErrorMessage } =
+  usePhoneNumber();
 
 /**
  * 입력 이벤트 핸들러 (자동 포맷팅)
  */
 const handlePhoneInput = (event: Event) => {
   const input = event.target as HTMLInputElement;
-  const formatted = formatPhoneNumber(input.value);
-  phoneNumber.value = formatted;
+  phoneNumber.value = formatPhoneNumber(input.value);
 
   // 입력 중에는 에러 메시지 초기화
-  if (phoneError.value) {
-    phoneError.value = "";
-  }
+  phoneError.value = "";
 };
 
 /**
- * blur 이벤트 핸들러 (유효성 검증)
+ * 유효성 검증 (디바운스 적용)
  */
-const validatePhone = () => {
-  if (phoneNumber.value) {
-    phoneError.value = getPhoneErrorMessage(phoneNumber.value);
-  }
-};
+const validatePhone = useDebounceFn(() => {
+  phoneError.value = phoneNumber.value ? getPhoneErrorMessage(phoneNumber.value) : "";
+}, 300);
 
 // ============================================
-// InputField의 padding-left를 TextDropdown의 width만큼 설정
+// InputField 스타일 - useElementSize로 자동 계산
 // ============================================
 const inputFieldStyle = computed(() => {
-  if (!carrierDropdownRef.value) return {};
+  if (!dropdownWidth.value) return {};
 
-  // TextDropdown의 실제 width를 가져옴
-  const dropdownEl = carrierDropdownRef.value.$el as HTMLElement;
-  if (!dropdownEl) return {};
-
-  const dropdownWidth = dropdownEl.offsetWidth;
   return {
-    paddingLeft: `${dropdownWidth + 8}px`, // 8px는 간격
+    paddingLeft: `${dropdownWidth.value + 8}px`, // 8px는 간격
   };
-});
-
-onMounted(() => {
-  // 컴포넌트 마운트 후 스타일 재계산 트리거
-  setTimeout(() => {
-    // Force re-render to calculate width
-  }, 100);
 });
 </script>
 
