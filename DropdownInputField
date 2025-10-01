@@ -1,0 +1,749 @@
+<template>
+  <div
+    class="sv-dropdown-input-field"
+    :style="{ '--dynamic-padding-left': dynamicPaddingLeft }"
+  >
+    <!-- InputField with integrated Dropdown -->
+    <div class="field-item dropdown-input-single-field">
+      <TextDropdown
+        ref="dropdownRef"
+        v-bind="mergedDropdownProps"
+        :value="internalDropdown"
+        @click="handleDropdownClick"
+        size="small"
+        class="field__dropdown"
+      >
+        <template
+          v-if="$slots.dropdownValue"
+          #value
+        >
+          <slot name="dropdownValue" />
+        </template>
+      </TextDropdown>
+
+      <div class="input-wrapper">
+        <InputField
+          ref="inputFieldRef"
+          v-bind="mergedInputFieldProps"
+          v-model="internalValue"
+          @input="handleInput"
+          @blur="handleBlur"
+          @focus="handleFocus"
+        >
+          <!-- Forward InputField slots -->
+          <template
+            v-if="$slots.startIconSvg"
+            #startIconSvg="slotProps"
+          >
+            <slot
+              name="startIconSvg"
+              v-bind="slotProps"
+            />
+          </template>
+          <template
+            v-if="$slots.endIconSvg"
+            #endIconSvg="slotProps"
+          >
+            <slot
+              name="endIconSvg"
+              v-bind="slotProps"
+            />
+          </template>
+          <template
+            v-if="$slots.button"
+            #button="slotProps"
+          >
+            <slot
+              name="button"
+              v-bind="slotProps"
+            />
+          </template>
+          <template
+            v-if="$slots.endAdornment"
+            #endAdornment="slotProps"
+          >
+            <slot
+              name="endAdornment"
+              v-bind="slotProps"
+            />
+          </template>
+        </InputField>
+      </div>
+    </div>
+
+    <!-- BottomSheet for dropdown selection -->
+    <BottomSheet
+      ref="bottomSheetRef"
+      v-bind="mergedBottomSheetProps"
+      v-model="isBottomSheetOpen"
+      @closed="handleBottomSheetClosed"
+    >
+      <template
+        v-if="$slots.bottomSheetHeader"
+        #header
+      >
+        <slot name="bottomSheetHeader" />
+      </template>
+
+      <slot
+        name="dropdownOptions"
+        :options="options"
+        :selectedOption="internalDropdown"
+        :selectOption="selectOption"
+      >
+        <div class="sv-dropdown-input-field__options">
+          <button
+            v-for="option in options"
+            :key="option.value"
+            class="sv-dropdown-input-field__option-btn"
+            :class="{
+              'sv-dropdown-input-field__option-btn--selected': internalDropdown === option.value,
+            }"
+            @click="selectOption(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </slot>
+
+      <template
+        v-if="$slots.bottomSheetFooter"
+        #footer
+      >
+        <slot name="bottomSheetFooter" />
+      </template>
+    </BottomSheet>
+  </div>
+</template>
+
+<script lang="ts">
+import type { TextDropdownProps } from "@/components/Dropdown/types";
+import type { BottomSheetProps, TextInputProps } from "@shc-nss/ui/solid";
+
+// Dropdown option 타입
+export interface DropdownOption {
+  label: string;
+  value: string;
+}
+
+// InputField 타입 (UniversalInputField와 동일)
+export type InputFieldType =
+  | "text"
+  | "phone"
+  | "phone-with-carrier"
+  | "card-pin"
+  | "card-number-single"
+  | "card-number-split"
+  | "rrn"
+  | "business-number"
+  | "union-branch"
+  | "english-name"
+  | "amount";
+
+// BottomSheet props 타입
+export type DropdownInputBottomSheetProps = Pick<
+  BottomSheetProps,
+  "title" | "variant" | "dimmed" | "closableDimm"
+>;
+
+// Props 타입
+export interface DropdownInputFieldProps {
+  /**
+   * 입력 필드 타입 (UniversalInputField의 타입 사용)
+   */
+  type?: InputFieldType;
+
+  /**
+   * v-model: 입력 값
+   */
+  modelValue: string;
+
+  /**
+   * v-model:dropdown: 드롭다운 선택 값
+   */
+  dropdown?: string;
+
+  /**
+   * 드롭다운 옵션 목록
+   */
+  options: DropdownOption[];
+
+  /**
+   * InputField에 전달할 props
+   */
+  inputFieldProps?: Partial<TextInputProps>;
+
+  /**
+   * TextDropdown에 전달할 props
+   */
+  dropdownProps?: Partial<TextDropdownProps>;
+
+  /**
+   * BottomSheet에 전달할 props
+   */
+  bottomSheetProps?: Partial<DropdownInputBottomSheetProps>;
+
+  /**
+   * 입력값 자동 포맷 (휴대폰 번호 등)
+   */
+  autoFormat?: boolean;
+
+  /**
+   * blur 시 유효성 검사 실행
+   */
+  validateOnBlur?: boolean;
+
+  /**
+   * 커스텀 유효성 검사 함수
+   */
+  validator?: (value: string) => string; // 에러 메시지 반환, 빈 문자열이면 유효
+}
+
+// Emits 타입
+export interface DropdownInputFieldEmits {
+  "update:modelValue": [value: string];
+  "update:dropdown": [value: string];
+  input: [event: Event];
+  focus: [event: FocusEvent];
+  blur: [event: FocusEvent];
+  validate: [isValid: boolean, errorMessage?: string];
+  "dropdown:click": [event: MouseEvent];
+  "dropdown:change": [value: string];
+  "bottomSheet:closed": [];
+}
+
+// Slots 타입
+export interface DropdownInputFieldSlots {
+  dropdownValue?: () => any;
+  startIconSvg?: (props: any) => any;
+  endIconSvg?: (props: any) => any;
+  button?: (props: any) => any;
+  endAdornment?: (props: any) => any;
+  bottomSheetHeader?: () => any;
+  bottomSheetFooter?: () => any;
+  dropdownOptions?: (props: {
+    options: DropdownOption[];
+    selectedOption: string;
+    selectOption: (value: string) => void;
+  }) => any;
+}
+</script>
+
+<script setup lang="ts">
+import { BottomSheet } from "@/components/BottomSheet";
+import { TextDropdown } from "@/components/Dropdown";
+import { InputField } from "@/components/InputField";
+import { useElementSize } from "@vueuse/core";
+import { computed, ref, watch } from "vue";
+
+const props = withDefaults(defineProps<DropdownInputFieldProps>(), {
+  type: "text",
+  dropdown: "",
+  autoFormat: false,
+  validateOnBlur: false,
+});
+
+const emit = defineEmits<DropdownInputFieldEmits>();
+defineSlots<DropdownInputFieldSlots>();
+
+// Refs
+const inputFieldRef = ref<InstanceType<typeof InputField> | null>(null);
+const dropdownRef = ref<InstanceType<typeof TextDropdown> | null>(null);
+const bottomSheetRef = ref<InstanceType<typeof BottomSheet> | null>(null);
+
+// Internal state
+const internalValue = ref(props.modelValue);
+const internalDropdown = ref(props.dropdown);
+const isBottomSheetOpen = ref(false);
+const validationError = ref("");
+
+// 드롭다운 너비 측정
+const dropdownElement = computed(() => dropdownRef.value?.$el as HTMLElement);
+const { width: dropdownWidth } = useElementSize(dropdownElement);
+
+// Watch external changes
+watch(
+  () => props.modelValue,
+  (newValue) => {
+    internalValue.value = newValue;
+  }
+);
+
+watch(
+  () => props.dropdown,
+  (newValue) => {
+    internalDropdown.value = newValue;
+  }
+);
+
+// ============================================
+// Type별 기본 inputItems 정의 (UniversalInputField와 동일)
+// ============================================
+const inputItemsMap: Record<InputFieldType, any[]> = {
+  text: [
+    {
+      id: "text",
+      name: "text",
+      type: "text",
+      placeholder: "텍스트 입력",
+      length: 50,
+    },
+  ],
+  phone: [
+    {
+      id: "phoneNumber",
+      name: "phoneNumber",
+      type: "tel",
+      placeholder: "휴대폰번호 입력",
+      length: 11,
+      inputmode: "numeric",
+      mask: {
+        mask: "###-####-####",
+        overwrite: false,
+      },
+    },
+  ],
+  "phone-with-carrier": [
+    {
+      id: "phoneNumber",
+      name: "phoneNumber",
+      type: "tel",
+      placeholder: "010-0000-0000",
+      length: 11,
+      inputmode: "numeric",
+      mask: {
+        mask: "###-####-####",
+        overwrite: false,
+      },
+    },
+  ],
+  "card-pin": [
+    {
+      id: "cardPin",
+      name: "cardPin",
+      type: "tel",
+      placeholder: "카드 비밀번호 입력",
+      length: 4,
+      inputmode: "numeric",
+      mask: {
+        mask: "####",
+        overwrite: false,
+        definitions: {
+          "#": { mask: "#", displayChar: "●" },
+        },
+      },
+    },
+  ],
+  "card-number-single": [
+    {
+      id: "cardNumber",
+      name: "cardNumber",
+      type: "text",
+      placeholder: "(-) 없이 숫자만 입력",
+      inputmode: "numeric",
+    },
+  ],
+  "card-number-split": [
+    {
+      id: "cardNumber1",
+      name: "cardNumber1",
+      type: "tel",
+      placeholder: "1234",
+      inputmode: "numeric",
+      mask: {
+        mask: "####",
+        definitions: {
+          "#": { mask: "#", placeholderChar: "" },
+        },
+      },
+    },
+    {
+      id: "cardNumber2",
+      name: "cardNumber2",
+      type: "tel",
+      placeholder: "5678",
+      inputmode: "numeric",
+      mask: {
+        mask: "####",
+        definitions: {
+          "#": { mask: "#", placeholderChar: "" },
+        },
+      },
+    },
+    {
+      id: "cardNumber3",
+      name: "cardNumber3",
+      type: "text",
+      placeholder: "●●●●",
+      inputmode: "numeric",
+    },
+    {
+      id: "cardNumber4",
+      name: "cardNumber4",
+      type: "text",
+      placeholder: "●●●●",
+      inputmode: "numeric",
+    },
+  ],
+  rrn: [
+    {
+      id: "rrn1",
+      name: "rrn1",
+      type: "tel",
+      placeholder: "생년월일 6자리",
+      mask: "######",
+      length: 6,
+      inputmode: "numeric",
+    },
+    {
+      id: "rrn2",
+      name: "rrn2",
+      type: "tel",
+      placeholder: "뒷자리 첫번째 숫자 입력",
+      length: 1,
+      inputmode: "numeric",
+      mask: {
+        mask: "nMMMMMM",
+        overwrite: true,
+        definitions: {
+          n: { mask: "#", placeholderChar: "○" },
+          m: { mask: "#", displayChar: "●", placeholderChar: "○" },
+          M: { mask: "#", displayChar: "●", placeholderChar: "●" },
+        },
+        clearIncomplete: false,
+        skipInvalid: true,
+        lazy: false,
+        eager: true,
+      },
+    },
+  ],
+  "business-number": [
+    {
+      id: "businessNumber",
+      name: "businessNumber",
+      type: "tel",
+      placeholder: "사업자등록번호 입력",
+      length: 10,
+      inputmode: "numeric",
+    },
+  ],
+  "union-branch": [
+    {
+      id: "unionBranch",
+      name: "unionBranch",
+      type: "text",
+      placeholder: "노동조합지부 입력",
+      length: 20,
+      inputmode: "text",
+    },
+  ],
+  "english-name": [
+    {
+      id: "englishName",
+      name: "englishName",
+      type: "text",
+      placeholder: "영문이름",
+      length: 50,
+      inputmode: "latin",
+      lang: "en-US",
+    },
+  ],
+  amount: [
+    {
+      id: "amount",
+      name: "amount",
+      type: "tel",
+      placeholder: "1만원 단위로 입력",
+      length: 15,
+      inputmode: "numeric",
+    },
+  ],
+};
+
+// ============================================
+// Type별 기본 props (UniversalInputField와 동일)
+// ============================================
+const typeDefaultProps: Record<InputFieldType, Partial<TextInputProps>> = {
+  text: {
+    label: "입력",
+    placeholder: "내용을 입력하세요",
+  },
+  phone: {
+    label: "휴대폰번호",
+    placeholder: "휴대폰번호 입력",
+  },
+  "phone-with-carrier": {
+    label: "휴대폰 번호",
+    placeholder: "010-0000-0000",
+  },
+  "card-pin": {
+    label: "카드 비밀번호",
+  },
+  "card-number-single": {
+    label: "카드번호",
+  },
+  "card-number-split": {
+    label: "카드번호",
+  },
+  rrn: {
+    label: "주민등록번호",
+  },
+  "business-number": {
+    label: "사업자등록번호",
+  },
+  "union-branch": {
+    label: "노동조합지부",
+  },
+  "english-name": {
+    label: "영문성명",
+  },
+  amount: {
+    label: "금액",
+  },
+};
+
+// ============================================
+// Utilities
+// ============================================
+const extractNumbers = (value: string): string => {
+  return value.replace(/[^0-9]/g, "");
+};
+
+const formatPhoneNumber = (value: string): string => {
+  const numbers = extractNumbers(value);
+
+  if (numbers.length <= 3) {
+    return numbers;
+  } else if (numbers.length <= 7) {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+  } else if (numbers.length <= 11) {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+  }
+
+  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+};
+
+const phoneRegex = /^(010|011|016|017|018|019)-?\d{3,4}-?\d{4}$/;
+
+const isValidPhoneNumber = (value: string): boolean => {
+  const numbers = extractNumbers(value);
+  return phoneRegex.test(numbers);
+};
+
+const getPhoneErrorMessage = (value: string): string => {
+  if (!value) return "휴대폰 번호를 입력해주세요.";
+
+  const numbers = extractNumbers(value);
+
+  if (numbers.length < 10) return "휴대폰 번호가 너무 짧습니다.";
+  if (numbers.length > 11) return "휴대폰 번호가 너무 깁니다.";
+  if (!phoneRegex.test(numbers)) return "올바른 휴대폰 번호 형식이 아닙니다.";
+
+  return "";
+};
+
+// ============================================
+// Event Handlers
+// ============================================
+const handleInput = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  let formattedValue = input.value;
+
+  if (props.autoFormat && (props.type === "phone" || props.type === "phone-with-carrier")) {
+    formattedValue = formatPhoneNumber(input.value);
+  }
+
+  internalValue.value = formattedValue;
+  emit("update:modelValue", formattedValue);
+  emit("input", event);
+
+  // Clear error on input
+  validationError.value = "";
+};
+
+const handleBlur = (event: FocusEvent) => {
+  if (props.validateOnBlur && internalValue.value) {
+    let errorMsg = "";
+
+    if (props.validator) {
+      // 커스텀 validator 사용
+      errorMsg = props.validator(internalValue.value);
+    } else if (props.type === "phone" || props.type === "phone-with-carrier") {
+      // 기본 휴대폰 번호 검증
+      errorMsg = getPhoneErrorMessage(internalValue.value);
+    }
+
+    validationError.value = errorMsg;
+    const isValid = !errorMsg;
+    emit("validate", isValid, errorMsg);
+  }
+
+  emit("blur", event);
+};
+
+const handleFocus = (event: FocusEvent) => {
+  emit("focus", event);
+};
+
+const handleDropdownClick = (event: MouseEvent) => {
+  isBottomSheetOpen.value = true;
+  emit("dropdown:click", event);
+};
+
+const selectOption = (value: string) => {
+  internalDropdown.value = value;
+  emit("update:dropdown", value);
+  emit("dropdown:change", value);
+  isBottomSheetOpen.value = false;
+};
+
+const handleBottomSheetClosed = () => {
+  emit("bottomSheet:closed");
+};
+
+// ============================================
+// Computed Props
+// ============================================
+// 동적 padding 계산 (드롭다운 너비 + 여백 8px)
+const dynamicPaddingLeft = computed(() => {
+  if (!dropdownWidth.value) return "107px"; // 기본값
+  return `${dropdownWidth.value + 8}px`;
+});
+
+const mergedInputFieldProps = computed<Partial<TextInputProps>>(() => ({
+  // Type별 기본 inputItems
+  inputItems: props.type ? inputItemsMap[props.type] : undefined,
+  // Type별 기본 props
+  ...(props.type ? typeDefaultProps[props.type] : {}),
+  // 에러 상태
+  error: !!validationError.value,
+  errorMessage: validationError.value,
+  // 사용자 정의 props (최우선)
+  ...props.inputFieldProps,
+}));
+
+const mergedDropdownProps = computed<Partial<TextDropdownProps>>(() => ({
+  placeholder: "선택",
+  size: "medium",
+  ...props.dropdownProps,
+}));
+
+const mergedBottomSheetProps = computed<Partial<DropdownInputBottomSheetProps>>(() => ({
+  title: "선택",
+  variant: "closeButton",
+  dimmed: true,
+  closableDimm: true,
+  ...props.bottomSheetProps,
+}));
+
+// Expose refs and methods for parent access
+defineExpose({
+  inputFieldRef,
+  dropdownRef,
+  bottomSheetRef,
+  // Utility methods
+  extractNumbers,
+  formatPhoneNumber,
+  isValidPhoneNumber,
+  getPhoneErrorMessage,
+  // State
+  value: internalValue,
+  dropdown: internalDropdown,
+  error: validationError,
+  // Methods
+  validate: () => {
+    let errorMsg = "";
+
+    if (props.validator) {
+      errorMsg = props.validator(internalValue.value);
+    } else if (props.type === "phone" || props.type === "phone-with-carrier") {
+      errorMsg = getPhoneErrorMessage(internalValue.value);
+    }
+
+    validationError.value = errorMsg;
+    const isValid = !errorMsg;
+    emit("validate", isValid, errorMsg);
+    return isValid;
+  },
+  clearError: () => {
+    validationError.value = "";
+  },
+});
+</script>
+
+<style lang="scss" scoped>
+@use "./_input-field" as *; // Input field 모듈 참조
+
+.sv-dropdown-input-field {
+  width: 100%;
+
+  /* 드롭다운 + 입력 필드 스타일 */
+  .field-item {
+    &.dropdown-input-single-field {
+      position: relative;
+
+      > .field__dropdown {
+        position: absolute;
+        bottom: 12px;
+        left: 16px;
+        z-index: 10;
+
+        /* 드롭다운 아이콘이 보이도록 스타일 적용 */
+        :deep(.sv-dropdown__arrow) {
+          display: block;
+          opacity: 1;
+          visibility: visible;
+        }
+
+        :deep(.sv-icon) {
+          display: block;
+          opacity: 1;
+          visibility: visible;
+        }
+      }
+
+      .input-wrapper {
+        :deep(.sv-text-input__input) {
+          padding-left: var(--dynamic-padding-left, 107px);
+        }
+      }
+    }
+  }
+
+  /* BottomSheet 내부 옵션 스타일 */
+  &__options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+  }
+
+  &__option-btn {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: left;
+    background-color: #f5f5f5;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: #e8e8e8;
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &--selected {
+      background-color: #0046ff;
+      color: white;
+      border-color: #0046ff;
+      font-weight: 600;
+    }
+  }
+}
+</style>
