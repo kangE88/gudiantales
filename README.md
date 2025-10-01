@@ -1,3 +1,887 @@
+@use "sass:math";
+@use "sass:map";
+@use "sass:meta";
+@use "@assets/styles/shared" as *; // re-exported variables + mixins
+@use "@assets/styles/base/functions" as *;
+@use "@assets/styles/base/mixin" as u;
+
+// Input field
+.sc-input__field {
+  display: grid;
+  gap: var(--spacing-2xl);
+
+  .input-field__group {
+    display: grid;
+    /* not-counter 클래스가 있는 input-field__inner에서만 카운터 숨김 */
+    &.not-counter {
+      :deep(.sv-input-helper__helper-text .sv-length-counter) {
+        display: none;
+      }
+    }
+    :deep(.date-field-wrapper) {
+      flex: 1;
+      position: relative;
+    }
+  }
+
+  /* field-item 간격 조정 */
+  .input-field__group {
+    .field-item {
+      margin-bottom: var(--spacing-2xl); // 20px
+
+      &:last-child {
+        margin-bottom: var(--spacing-none); // 0px
+      }
+
+      &.phone-number-single-field {
+        position: relative;
+
+        > .phone__drop {
+          position: absolute;
+          bottom: 12px;
+          left: 16px;
+          z-index: 10;
+        }
+        .phone-number-input-wrapper {
+          :deep(.sv-text-input__input) {
+            padding-left: 107px;
+          }
+        }
+      }
+
+      &--icon-origin {
+        :deep(.sv-text-input__end-icon),
+        :deep(.sv-text-input__start-icon) {
+          mix-blend-mode: initial !important;
+        }
+      }
+    }
+  }
+
+  .field-info {
+    @include font-set("detail-l", 300);
+    color: var(--text-quaternary);
+    margin-top: var(--spacing-md); // 8px
+    padding-inline: var(--spacing-sm); // 4px
+  }
+
+  /* 입력된 값이 있을 때 primary 색상, placeholder는 제외 */
+  :deep(.sv-text-input__input) {
+    color: var(--text-disabled-same);
+
+    &:focus {
+      color: var(--text-primary);
+    }
+  }
+
+  /* 모든 readonly 상태의 value 값 색상을 text-primary로 설정 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(input[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태 강제 적용 */
+  :deep(input[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+  }
+
+  /* 모든 readonly 상태에 대한 강제 색상 적용 */
+  :deep(.sv-text-input) {
+    &.sv-text-input--readonly,
+    &[readonly] {
+      .sv-text-input__input,
+      input {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly 속성이 있는 모든 input 요소 */
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+  }
+
+  /* 모든 readonly 상태에 대한 최종 강제 적용 */
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only),
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input--readonly .sv-text-input__input),
+  :deep(.sv-text-input--readonly input) {
+    color: var(--text-primary) !important;
+  }
+
+  /* readonly 상태의 모든 요소에 대한 강제 색상 적용 */
+  :deep(.sv-text-input--readonly) {
+    * {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 ● 문자도 text-primary 색상 적용 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* ● 문자도 text-primary 색상으로 강제 적용 */
+      &::before,
+      &::after {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* ● 문자가 포함된 readonly 텍스트의 색상 강제 적용 */
+  :deep(.sv-text-input--readonly .sv-text-input__input),
+  :deep(.sv-text-input--readonly input),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 문자(● 포함)에 text-primary 색상 적용 */
+    * {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 색상 강제 적용 - 최종 강제 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only) {
+    .sv-text-input__container,
+    .sv-text-input__item,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+      * {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly input 직접 타겟팅 - 최종 강제 */
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소와 가상 요소에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 강제 색상 적용 - 최종 최강 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only),
+  :deep(.sv-text-input__container[readonly]),
+  :deep(.sv-text-input__item[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 요소와 텍스트에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after,
+    span,
+    div,
+    p,
+    text {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 input 요소 강제 색상 적용 */
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+    * {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 색상 강제 적용 - 최종 최강 강제 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only),
+  :deep(.sv-text-input__container[readonly]),
+  :deep(.sv-text-input__item[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 요소와 텍스트에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after,
+    span,
+    div,
+    p,
+    text,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 요소에 대한 최종 강제 색상 적용 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only) {
+    .sv-text-input__container,
+    .sv-text-input__item,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+      * {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly 상태의 모든 input 요소에 대한 최종 강제 색상 적용 */
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소와 가상 요소에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 색상 강제 적용 - 최종 최강 강제 2 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only),
+  :deep(.sv-text-input__container[readonly]),
+  :deep(.sv-text-input__item[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 요소와 텍스트에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after,
+    span,
+    div,
+    p,
+    text,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 요소에 대한 최종 강제 색상 적용 2 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only) {
+    .sv-text-input__container,
+    .sv-text-input__item,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+      * {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly 상태의 모든 input 요소에 대한 최종 강제 색상 적용 2 */
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소와 가상 요소에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 색상 강제 적용 - 최종 최강 강제 3 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only),
+  :deep(.sv-text-input__container[readonly]),
+  :deep(.sv-text-input__item[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 요소와 텍스트에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after,
+    span,
+    div,
+    p,
+    text,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 요소에 대한 최종 강제 색상 적용 3 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only) {
+    .sv-text-input__container,
+    .sv-text-input__item,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+      * {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly 상태의 모든 input 요소에 대한 최종 강제 색상 적용 3 */
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소와 가상 요소에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 색상 강제 적용 - 최종 최강 강제 4 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only),
+  :deep(.sv-text-input__container[readonly]),
+  :deep(.sv-text-input__item[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 요소와 텍스트에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after,
+    span,
+    div,
+    p,
+    text,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 요소에 대한 최종 강제 색상 적용 4 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only) {
+    .sv-text-input__container,
+    .sv-text-input__item,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+      * {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly 상태의 모든 input 요소에 대한 최종 강제 색상 적용 4 */
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소와 가상 요소에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 색상 강제 적용 - 최종 최강 강제 5 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only),
+  :deep(.sv-text-input__container[readonly]),
+  :deep(.sv-text-input__item[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 요소와 텍스트에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after,
+    span,
+    div,
+    p,
+    text,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 요소에 대한 최종 강제 색상 적용 5 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only) {
+    .sv-text-input__container,
+    .sv-text-input__item,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+      * {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly 상태의 모든 input 요소에 대한 최종 강제 색상 적용 5 */
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소와 가상 요소에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 텍스트 색상 강제 적용 - 최종 최강 강제 6 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only),
+  :deep(.sv-text-input__container[readonly]),
+  :deep(.sv-text-input__item[readonly]),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only),
+  :deep(input[readonly]),
+  :deep(input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 요소와 텍스트에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after,
+    span,
+    div,
+    p,
+    text,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* readonly 상태의 모든 요소에 대한 최종 강제 색상 적용 6 */
+  :deep(.sv-text-input--readonly),
+  :deep(.sv-text-input.sv-text-input--readonly),
+  :deep(.sv-text-input[readonly]),
+  :deep(.sv-text-input:read-only) {
+    .sv-text-input__container,
+    .sv-text-input__item,
+    .sv-text-input__input,
+    input {
+      color: var(--text-primary) !important;
+
+      /* 모든 하위 요소에 text-primary 색상 강제 적용 */
+      * {
+        color: var(--text-primary) !important;
+      }
+    }
+  }
+
+  /* readonly 상태의 모든 input 요소에 대한 최종 강제 색상 적용 6 */
+  :deep(input[readonly]),
+  :deep(input:read-only),
+  :deep(.sv-text-input__input[readonly]),
+  :deep(.sv-text-input__input:read-only) {
+    color: var(--text-primary) !important;
+
+    /* 모든 하위 요소와 가상 요소에 text-primary 색상 강제 적용 */
+    *,
+    &::before,
+    &::after {
+      color: var(--text-primary) !important;
+    }
+  }
+
+  /* 카드번호 입력 필드 스타일 (한줄 유형) */
+  .card-number-single-field {
+    // readonly 상태일 때 색상 강제 적용
+    :deep(.sv-text-input--readonly),
+    :deep(.sv-text-input.sv-text-input--readonly),
+    :deep(.card-number-single-field .sv-text-input--readonly) {
+      background-color: #f5f5f5 !important;
+      pointer-events: none !important;
+
+      .sv-text-input__container {
+        background-color: #f5f5f5 !important;
+        border-color: #e0e0e0 !important;
+      }
+
+      .sv-text-input__input {
+        background-color: #f5f5f5 !important;
+        color: var(--text-primary) !important;
+        pointer-events: none !important;
+        cursor: not-allowed !important;
+      }
+    }
+
+    // readonly input 직접 타겟팅
+    :deep(input[readonly]) {
+      background-color: #f5f5f5 !important;
+      color: var(--text-primary) !important;
+      pointer-events: none !important;
+      cursor: not-allowed !important;
+    }
+
+    // 마스킹된 부분을 ●로 표시
+    :deep(.sv-text-input__input) {
+      font-family: monospace;
+      letter-spacing: 0.1em;
+      position: relative;
+
+      // password 타입이지만 8자리까지는 보이도록 처리
+      &[type="password"] {
+        // 8자리까지는 일반 텍스트로 표시
+        font-family: monospace;
+        letter-spacing: 0.1em;
+      }
+    }
+  }
+
+  /* 금액 입력 필드 스타일 */
+  .amount-field {
+    // readonly 상태일 때 컨테이너 배경색 변경 - 모든 가능한 선택자 사용
+    :deep(.sv-text-input--readonly),
+    :deep(.sv-text-input.sv-text-input--readonly),
+    :deep(.amount-field .sv-text-input--readonly) {
+      background-color: #f5f5f5 !important;
+      pointer-events: none !important;
+
+      .sv-text-input__container,
+      .sv-text-input__item,
+      .sv-text-input__input,
+      input {
+        background-color: #f5f5f5 !important;
+        border-color: #e0e0e0 !important;
+        color: var(--text-primary) !important;
+        pointer-events: none !important;
+        cursor: not-allowed !important;
+      }
+    }
+
+    // readonly input 직접 타겟팅
+    :deep(input[readonly]) {
+      background-color: #f5f5f5 !important;
+      color: var(--text-primary) !important;
+      pointer-events: none !important;
+      cursor: not-allowed !important;
+    }
+
+    // 전체 readonly 영역에 배경색 적용
+    &.amount-field:has(input[readonly]) {
+      background-color: #f5f5f5 !important;
+      pointer-events: none !important;
+
+      * {
+        background-color: #f5f5f5 !important;
+        pointer-events: none !important;
+        cursor: not-allowed !important;
+        color: var(--text-primary) !important;
+      }
+    }
+
+    // 인풋 필드 스타일
+    :deep(.sv-text-input__input) {
+      text-align: left;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      @include font-set("headline-m", 500); // headline-m 폰트 크기 적용
+
+      &::placeholder {
+        text-align: left;
+        color: var(--text-quaternary);
+        @include font-set("headline-m", 500); // placeholder에도 동일한 폰트 크기 적용
+      }
+
+      // readonly 상태일 때 색상 적용
+      &[readonly] {
+        color: var(--text-primary) !important;
+        background-color: transparent !important;
+        @include font-set("headline-m", 500); // readonly 상태에도 동일한 폰트 크기 적용
+      }
+    }
+
+    // help message 색상 관리 - 항상 파란색으로 표시
+    :deep(.sv-input-helper__helper-text) {
+      color: var(--color-primary);
+    }
+
+    // 버튼 영역과 help 메시지 간격 (20px)
+    :deep(.sv-input-helper) {
+      margin-bottom: var(--spacing-2xl); // 20px
+    }
+
+    // 금액 버튼 텍스트 색상을 secondary로 변경
+    :deep(.sv-button) {
+      color: var(--text-secondary);
+    }
+  }
+
+  // 유효기간 분리된 입력 필드 스타일
+  .expiry-date-inputs {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+
+    .date-separator {
+      @include font-set("body-m", 500);
+      color: var(--text-secondary);
+      margin: 0 var(--spacing-xs);
+    }
+
+    .sv-input-field {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .input-label {
+    @include font-set("body-m", 500);
+    color: var(--text-tertiary);
+  }
+
+  // CVC 레이블 그룹 스타일
+  .label-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+    .sv-icon-button {
+      color: var(--text-quaternary);
+    }
+  }
+
+  // 에러 메시지 스타일 (InputHelper와 동일한 스타일 적용)
+  .sv-input-field__error {
+    @include font-set("detail-l", 300);
+    color: var(--text-negative-same);
+    margin-top: var(--spacing-md);
+    padding-inline: var(--spacing-sm);
+  }
+
+  // button slot
+  :deep(.sv-text-input__button-slot) {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.select-list {
+  &__image {
+    &.isCheck {
+      ul {
+        li {
+          height: 48px;
+
+          > p {
+            font-weight: 400;
+          }
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          &.selected {
+            background: var(--bg-brand);
+          }
+        }
+      }
+    }
+  }
+}
+// 유효기간 분리된 입력 필드 스타일
+.expiry-date-inputs {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+
+  .date-separator {
+    @include font-set("body-m", 500);
+    color: var(--text-secondary);
+    margin: 0 var(--spacing-xs);
+  }
+
+  .sv-input-field {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.input-label {
+  @include font-set("body-m", 500);
+  color: var(--text-tertiary);
+}
+
+// CVC 레이블 그룹 스타일
+.label-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  .sv-icon-button {
+    color: var(--text-quaternary);
+  }
+}
+
+// 에러 메시지 스타일 (InputHelper와 동일한 스타일 적용)
+.sv-input-field__error {
+  @include font-set("detail-l", 300);
+  color: var(--text-negative-same);
+  margin-top: var(--spacing-md);
+  padding-inline: var(--spacing-sm);
+}
+
+// button slot
+:deep(.sv-text-input__button-slot) {
+  display: flex;
+  align-items: center;
+}
+
+
+<div class="sc-input__field">
+    <div class="input-field__group">
+      <div class="field-item phone-number-single-field">
+        <!-- 통신사 선택 TextDropdown -->
+        <TextDropdown
+          ref="carrierDropdownRef"
+          :value="selectedCarrier"
+          label="통신사선택"
+          size="small"
+          @click="openCarrierBottomSheet"
+          class="phone__drop"
+        />
+
+        <!-- 휴대폰 번호 입력 InputField -->
+        <div class="phone-number-input-wrapper">
+          <InputField
+            :style="inputFieldStyle"
+            v-model="phoneNumber"
+            label="휴대폰 번호"
+            placeholder="010-0000-0000"
+            :error="!!phoneError"
+            :errorMessage="phoneError"
+            class="phone-input"
+            @input="handlePhoneInput"
+            @blur="validatePhone"
+            :show-clear="true"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+// ============================================
+// InputField 스타일 - useElementSize로 자동 계산
+// ============================================
+const inputFieldStyle = computed(() => {
+  console.log("inputFieldStyle>>>", dropdownWidth.value);
+  if (!dropdownWidth.value) return {};
+  const element = document.querySelector(".sv-text-input__input");
+  const inputStyle = window.getComputedStyle(element as HTMLElement);
+  console.log("inputStyle get:", inputStyle.paddingLeft);
+
+  // inputStyle.setProperty("--input-padding", `${dropdownWidth.value + 8}px`);
+  return {
+    paddingLeft: `${dropdownWidth.value + 8}px`, // 8px는 간격
+  };
+});
+</script>
+
 <route lang="yaml">
 meta:
   title: Mobile Carrier Input
@@ -32,7 +916,7 @@ meta:
           label="휴대폰 번호"
           placeholder="010-0000-0000"
           :style="inputFieldStyle"
-          :error="!!phoneError"
+          :error="!!phoneError"å
           :errorMessage="phoneError"
           class="phone-input"
           @input="handlePhoneInput"
