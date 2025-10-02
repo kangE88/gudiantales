@@ -1,91 +1,323 @@
+import { ref, computed, onMounted, onUnmounted, watch } from “vue”;
+import { useThrottleFn, useWindowScroll, useWindowSize } from “@vueuse/core”;
 
+export interface UseBottomActionLayoutOptions {
+/**
 
-import { useThrottleFn, useWindowScroll, useWindowSize } from "@vueuse/core";
+- 바텀 액션 컨테이너 셀렉터
+- @default ‘.sv-bottom-action-container’
+  */
+  bottomSelector?: string;
 
+/**
 
+- 메인 컨테이너 셀렉터
+- @default ‘.sc-container’
+  */
+  containerSelector?: string;
 
-function one { 
-    // Scroll handling for bottom action container
-const checkScrolled = useThrottleFn(() => {
+/**
+
+- 스크롤 감지 스로틀 시간 (ms)
+- @default 10
+  */
+  scrollThrottle?: number;
+
+/**
+
+- 하단 스크롤 임계값 (px)
+- @default 10
+  */
+  scrollThreshold?: number;
+
+/**
+
+- CSS 변수명
+- @default ‘–sc-bottom-action-height’
+  */
+  cssVarName?: string;
+
+/**
+
+- 루트 엘리먼트 (기본값: document)
+  */
+  rootElement?: HTMLElement | Document;
+  }
+
+/**
+
+- 바텀 액션 레이아웃을 관리하는 컴포저블
+- 
+- @example
+- ```vue
+  
+  ```
+- <script setup>
+- import { useBottomActionLayout } from ‘@/composables/useBottomActionLayout’
+- 
+- const {
+- bottomHeight,
+- bottomHeightRem,
+- isScrolled,
+- isAtBottom
+- } = useBottomActionLayout()
+- </script>
+- 
+- <template>
+- <div class="sc-container">
+- ```
+  <main class="main-content">
+  ```
+- ```
+    <!-- 메인 컨텐츠 -->
+  ```
+- ```
+    <p>바텀 높이: {{ bottomHeight }}px ({{ bottomHeightRem }}rem)</p>
+  ```
+- ```
+  </main>
+  ```
+- 
+- ```
+  <div 
+  ```
+- ```
+    class="sv-bottom-action-container"
+  ```
+- ```
+    :class="{ 'is-scrolled': isScrolled }"
+  ```
+- ```
+  >
+  ```
+- ```
+    <!-- 바텀 액션 버튼들 -->
+  ```
+- ```
+    <button>저장</button>
+  ```
+- ```
+    <button>취소</button>
+  ```
+- ```
+  </div>
+  ```
+- </div>
+- </template>
+- 
+- <style>
+- .sc-container {
+- position: relative;
+- padding-bottom: var(–sc-bottom-action-height, 0);
+- }
+- 
+- .main-content {
+- min-height: 100vh;
+- }
+- 
+- .sv-bottom-action-container {
+- position: fixed;
+- bottom: 0;
+- left: 0;
+- right: 0;
+- background: white;
+- padding: 1rem;
+- box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+- transition: box-shadow 0.3s;
+- }
+- 
+- .sv-bottom-action-container.is-scrolled {
+- box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+- }
+- </style>
+- ```
+  
+  ```
+
+*/
+export function useBottomActionLayout(options: UseBottomActionLayoutOptions = {}) {
+const {
+bottomSelector = “.sv-bottom-action-container”,
+containerSelector = “.sc-container”,
+scrollThrottle = 10,
+scrollThreshold = 10,
+cssVarName = “–sc-bottom-action-height”,
+rootElement = document,
+} = options;
+
+// 반응형 상태
+const bottomHeight = ref(0);
+const bottomHeightRem = ref(0);
+const isScrolled = ref(false);
+const isAtBottom = ref(false);
+
+// 옵저버 인스턴스
+let resizeObserver: ResizeObserver | null = null;
+let mutationObserver: MutationObserver | null = null;
+
+// VueUse hooks
+const { y: scrollY } = useWindowScroll();
+const { height: windowHeight } = useWindowSize();
+
+/**
+
+- 스크롤 위치 확인 (스로틀 적용)
+  */
+  const checkScrollPosition = useThrottleFn(() => {
   const documentHeight = document.documentElement.scrollHeight;
-  const scrollThreshold = 10;
-  const isAtBottom = scrollY.value + windowHeight.value >= documentHeight - scrollThreshold;
+  const atBottom = scrollY.value + windowHeight.value >= documentHeight - scrollThreshold;
 
-  // 더 스크롤 내릴 수 있으면 addClass (scrolled = true)
-  // 젤 아래로 내리면 removeClass (scrolled = false)
-  isScrolled.value = !isAtBottom;
-}, 10);
+```
+isAtBottom.value = atBottom;
+isScrolled.value = !atBottom;
+```
+
+}, scrollThrottle);
+
+/**
+
+- 바텀 높이 계산 및 CSS 변수 적용
+  */
+  const applyBottomHeight = () => {
+  const scopeEl = rootElement instanceof HTMLElement ? rootElement : document;
+
+```
+// 컨테이너 찾기
+const container =
+  rootElement instanceof HTMLElement && rootElement.classList.contains(containerSelector.slice(1))
+    ? rootElement
+    : (scopeEl.querySelector(containerSelector) as HTMLElement | null);
+
+// 바텀 액션 컨테이너 찾기
+const bottomActionEl = scopeEl.querySelector(bottomSelector) as HTMLElement | null;
+
+if (!container || !bottomActionEl) {
+  bottomHeight.value = 0;
+  bottomHeightRem.value = 0;
+  if (container) {
+    container.style.removeProperty(cssVarName);
+  }
+  return;
 }
 
-function two { 
-    
-}
+// 높이 계산
+const rect = bottomActionEl.getBoundingClientRect();
+const heightPx = Math.ceil(rect.height);
 
-function setupBottomActionHeightObserver(root: HTMLElement | Document) {
+// px -> rem 변환
+const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+const heightRem = heightPx / rootFontSize;
+
+// 상태 업데이트
+bottomHeight.value = heightPx;
+bottomHeightRem.value = heightRem;
+
+// CSS 변수 설정
+if (heightPx > 0) {
+  container.style.setProperty(cssVarName, `${heightRem}rem`);
+} else {
+  container.style.removeProperty(cssVarName);
+}
+```
+
+};
+
+/**
+
+- 옵저버 설정
+  */
+  const setupObservers = () => {
   try {
-    const scopeEl: Document | HTMLElement = root instanceof HTMLElement ? root : document;
+  const scopeEl = rootElement instanceof HTMLElement ? rootElement : document;
+  
+  const container =
+  rootElement instanceof HTMLElement && rootElement.classList.contains(containerSelector.slice(1))
+  ? rootElement
+  : (scopeEl.querySelector(containerSelector) as HTMLElement | null);
+  
+  const bottomActionEl = scopeEl.querySelector(bottomSelector) as HTMLElement | null;
+  
+  if (!container) return;
+  
+  // ResizeObserver 설정 (높이 변화 감지)
+  if (“ResizeObserver” in window) {
+  resizeObserver = new ResizeObserver(() => {
+  applyBottomHeight();
+  });
+  
+  if (bottomActionEl) {
+  resizeObserver.observe(bottomActionEl);
+  }
+  }
+  
+  // MutationObserver 설정 (DOM 변화 감지)
+  mutationObserver = new MutationObserver(() => {
+  applyBottomHeight();
+  
+  // 바텀 액션 엘리먼트가 변경되면 ResizeObserver 재설정
+  const currentBottomEl = scopeEl.querySelector(bottomSelector) as HTMLElement | null;
+  
+  if (resizeObserver) {
+  resizeObserver.disconnect();
+  if (currentBottomEl) {
+  resizeObserver.observe(currentBottomEl);
+  }
+  }
+  });
+  
+  mutationObserver.observe(container, {
+  childList: true,
+  subtree: true,
+  });
+  } catch (error) {
+  console.error(“Failed to setup observers:”, error);
+  }
+  };
 
-    // root가 곧바로 .sc-container 인 경우 자체를 컨테이너로 사용
+/**
 
-    const container =
-      root instanceof HTMLElement && root.classList.contains("sc-container")
-        ? root
-        : (scopeEl.querySelector(".sc-container") as HTMLElement | null);
+- 옵저버 정리
+  */
+  const cleanupObservers = () => {
+  if (resizeObserver) {
+  resizeObserver.disconnect();
+  resizeObserver = null;
+  }
+  if (mutationObserver) {
+  mutationObserver.disconnect();
+  mutationObserver = null;
+  }
+  };
 
-    const bac = scopeEl.querySelector(".sv-bottom-action-container") as HTMLElement | null;
+// 스크롤 감지
+watch([scrollY, windowHeight], () => {
+checkScrollPosition();
+});
 
-    if (!container) return;
+// 초기화
+onMounted(() => {
+applyBottomHeight();
+setupObservers();
+checkScrollPosition();
+});
 
-    const applyHeight = () => {
-      const target = (root instanceof HTMLElement ? root : document).querySelector(
-        ".sv-bottom-action-container"
-      ) as HTMLElement | null;
+// 정리
+onUnmounted(() => {
+cleanupObservers();
+});
 
-      const h = target ? Math.ceil(target.getBoundingClientRect().height) : 0;
+return {
+// 상태
+bottomHeight: computed(() => bottomHeight.value),
+bottomHeightRem: computed(() => bottomHeightRem.value),
+isScrolled: computed(() => isScrolled.value),
+isAtBottom: computed(() => isAtBottom.value),
 
-      if (h > 0) {
-        // px -> rem 변환 (루트 폰트 사이즈 기준)
+```
+// 메서드
+refresh: applyBottomHeight,
+cleanup: cleanupObservers,
+```
 
-        const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-
-        const remVal = h / rootFontSize;
-
-        container.style.setProperty("--sc-bottom-action-height", `${remVal}px`);
-      } else {
-        container.style.removeProperty("--sc-bottom-action-height");
-      }
-    };
-
-    // 초기 적용
-
-    applyHeight();
-
-    // ResizeObserver로 높이 변화를 추적
-
-    if ("ResizeObserver" in window) {
-      if (!bacResizeObserver) {
-        bacResizeObserver = new ResizeObserver(() => applyHeight());
-      }
-
-      if (bac) bacResizeObserver.observe(bac);
-    }
-
-    // MutationObserver로 DOM 추가/제거도 추적하여 observer 재연결
-
-    const mo = new MutationObserver(() => {
-      applyHeight();
-
-      const currentBac = scopeEl.querySelector(".sv-bottom-action-container") as HTMLElement | null;
-
-      if (bacResizeObserver) {
-        try {
-          bacResizeObserver.disconnect();
-        } catch {}
-
-        if (currentBac) bacResizeObserver.observe(currentBac);
-      }
-    });
-
-    mo.observe(container, { childList: true, subtree: true });
-  } catch {}
+};
 }
