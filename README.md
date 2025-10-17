@@ -1,323 +1,277 @@
-import { ref, computed, onMounted, onUnmounted, watch } from “vue”;
-import { useThrottleFn, useWindowScroll, useWindowSize } from “@vueuse/core”;
-
-export interface UseBottomActionLayoutOptions {
-/**
-
-- 바텀 액션 컨테이너 셀렉터
-- @default ‘.sv-bottom-action-container’
-  */
-  bottomSelector?: string;
-
-/**
-
-- 메인 컨테이너 셀렉터
-- @default ‘.sc-container’
-  */
-  containerSelector?: string;
-
-/**
-
-- 스크롤 감지 스로틀 시간 (ms)
-- @default 10
-  */
-  scrollThrottle?: number;
-
-/**
-
-- 하단 스크롤 임계값 (px)
-- @default 10
-  */
-  scrollThreshold?: number;
-
-/**
-
-- CSS 변수명
-- @default ‘–sc-bottom-action-height’
-  */
-  cssVarName?: string;
-
-/**
-
-- 루트 엘리먼트 (기본값: document)
-  */
-  rootElement?: HTMLElement | Document;
-  }
-
-/**
-
-- 바텀 액션 레이아웃을 관리하는 컴포저블
-- 
-- @example
-- ```vue
-  
-  ```
-- <script setup>
-- import { useBottomActionLayout } from ‘@/composables/useBottomActionLayout’
-- 
-- const {
-- bottomHeight,
-- bottomHeightRem,
-- isScrolled,
-- isAtBottom
-- } = useBottomActionLayout()
-- </script>
-- 
-- <template>
-- <div class="sc-container">
-- ```
-  <main class="main-content">
-  ```
-- ```
-    <!-- 메인 컨텐츠 -->
-  ```
-- ```
-    <p>바텀 높이: {{ bottomHeight }}px ({{ bottomHeightRem }}rem)</p>
-  ```
-- ```
-  </main>
-  ```
-- 
-- ```
-  <div 
-  ```
-- ```
-    class="sv-bottom-action-container"
-  ```
-- ```
-    :class="{ 'is-scrolled': isScrolled }"
-  ```
-- ```
-  >
-  ```
-- ```
-    <!-- 바텀 액션 버튼들 -->
-  ```
-- ```
-    <button>저장</button>
-  ```
-- ```
-    <button>취소</button>
-  ```
-- ```
+<template>
+  <!-- 테스트용 버튼 -->
+  <div class="sc-keypad__test-controls">
+    <Button
+      :label="`${isDarkTheme ? '라이트 테마' : '다크 테마'} (현재: ${isDarkTheme ? '다크' : '라이트'})`"
+      :variant="isDarkTheme ? 'outline' : 'solid'"
+      size="small"
+      @click="toggleTheme"
+    />
+    <p style="margin: 8px 0 0 0; font-size: 12px; color: var(--text-secondary)">
+      isDarkTheme: {{ isDarkTheme }}
+    </p>
   </div>
-  ```
-- </div>
-- </template>
-- 
-- <style>
-- .sc-container {
-- position: relative;
-- padding-bottom: var(–sc-bottom-action-height, 0);
-- }
-- 
-- .main-content {
-- min-height: 100vh;
-- }
-- 
-- .sv-bottom-action-container {
-- position: fixed;
-- bottom: 0;
-- left: 0;
-- right: 0;
-- background: white;
-- padding: 1rem;
-- box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-- transition: box-shadow 0.3s;
-- }
-- 
-- .sv-bottom-action-container.is-scrolled {
-- box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
-- }
-- </style>
-- ```
-  
-  ```
 
-*/
-export function useBottomActionLayout(options: UseBottomActionLayoutOptions = {}) {
-const {
-bottomSelector = “.sv-bottom-action-container”,
-containerSelector = “.sc-container”,
-scrollThrottle = 10,
-scrollThreshold = 10,
-cssVarName = “–sc-bottom-action-height”,
-rootElement = document,
-} = options;
+  <!-- 접근성 메시지 박스 -->
+  <div
+    ref="messageBox"
+    class="sc-keypad__message"
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+  >
+    {{ voiceMessage }}
+  </div>
 
-// 반응형 상태
-const bottomHeight = ref(0);
-const bottomHeightRem = ref(0);
-const isScrolled = ref(false);
-const isAtBottom = ref(false);
+  <div :class="['sc-virtual__keypad', { 'sc-virtual__keypad--dark': isDarkTheme }]">
+    <div class="sc-keypad__keys">
+      <!-- 동적으로 렌더링되는 숫자 버튼들 (1~9) -->
+      <Button
+        v-for="number in numbers.slice(0, 9)"
+        :key="number"
+        :label="number"
+        :aria-label="`숫자 ${number} 입력`"
+        class="keypad-btn keypad-btn--number"
+        @click="handleNumberClick(number)"
+      />
 
-// 옵저버 인스턴스
-let resizeObserver: ResizeObserver | null = null;
-let mutationObserver: MutationObserver | null = null;
+      <!-- 00 또는 재배열 버튼 -->
+      <Button
+        v-if="!showRearrange && !isDarkTheme"
+        label="00"
+        aria-label="숫자 00 입력"
+        class="keypad-btn keypad-btn--number"
+        @click="handleNumberClick('00')"
+      />
+      <Button
+        v-else
+        label="재배열"
+        aria-label="숫자 재배열"
+        class="keypad-btn keypad-btn--rearrange"
+        @click="handleRearrangeClick"
+      />
 
-// VueUse hooks
-const { y: scrollY } = useWindowScroll();
-const { height: windowHeight } = useWindowSize();
+      <!-- 0 버튼 -->
+      <Button
+        label="0"
+        :aria-label="`숫자 0 입력`"
+        class="keypad-btn keypad-btn--number"
+        @click="handleNumberClick('0')"
+      />
 
-/**
+      <!-- 삭제 버튼 -->
+      <IconButton
+        iconName="delete"
+        size="large"
+        aria-label="삭제"
+        class="keypad-btn keypad-btn--delete"
+        @click="handleDeleteClick"
+      />
+    </div>
+  </div>
+</template>
+<script setup lang="ts">
+import { Button, IconButton } from "@shc-nss/ui/solid";
+import { onMounted, ref } from "vue";
 
-- 스크롤 위치 확인 (스로틀 적용)
-  */
-  const checkScrollPosition = useThrottleFn(() => {
-  const documentHeight = document.documentElement.scrollHeight;
-  const atBottom = scrollY.value + windowHeight.value >= documentHeight - scrollThreshold;
-
-```
-isAtBottom.value = atBottom;
-isScrolled.value = !atBottom;
-```
-
-}, scrollThrottle);
-
-/**
-
-- 바텀 높이 계산 및 CSS 변수 적용
-  */
-  const applyBottomHeight = () => {
-  const scopeEl = rootElement instanceof HTMLElement ? rootElement : document;
-
-```
-// 컨테이너 찾기
-const container =
-  rootElement instanceof HTMLElement && rootElement.classList.contains(containerSelector.slice(1))
-    ? rootElement
-    : (scopeEl.querySelector(containerSelector) as HTMLElement | null);
-
-// 바텀 액션 컨테이너 찾기
-const bottomActionEl = scopeEl.querySelector(bottomSelector) as HTMLElement | null;
-
-if (!container || !bottomActionEl) {
-  bottomHeight.value = 0;
-  bottomHeightRem.value = 0;
-  if (container) {
-    container.style.removeProperty(cssVarName);
-  }
-  return;
+export interface ScKeypadProps {
+  showRearrange?: boolean;
+  value?: any[];
 }
 
-// 높이 계산
-const rect = bottomActionEl.getBoundingClientRect();
-const heightPx = Math.ceil(rect.height);
-
-// px -> rem 변환
-const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-const heightRem = heightPx / rootFontSize;
-
-// 상태 업데이트
-bottomHeight.value = heightPx;
-bottomHeightRem.value = heightRem;
-
-// CSS 변수 설정
-if (heightPx > 0) {
-  container.style.setProperty(cssVarName, `${heightRem}rem`);
-} else {
-  container.style.removeProperty(cssVarName);
-}
-```
-
-};
-
-/**
-
-- 옵저버 설정
-  */
-  const setupObservers = () => {
-  try {
-  const scopeEl = rootElement instanceof HTMLElement ? rootElement : document;
-  
-  const container =
-  rootElement instanceof HTMLElement && rootElement.classList.contains(containerSelector.slice(1))
-  ? rootElement
-  : (scopeEl.querySelector(containerSelector) as HTMLElement | null);
-  
-  const bottomActionEl = scopeEl.querySelector(bottomSelector) as HTMLElement | null;
-  
-  if (!container) return;
-  
-  // ResizeObserver 설정 (높이 변화 감지)
-  if (“ResizeObserver” in window) {
-  resizeObserver = new ResizeObserver(() => {
-  applyBottomHeight();
-  });
-  
-  if (bottomActionEl) {
-  resizeObserver.observe(bottomActionEl);
-  }
-  }
-  
-  // MutationObserver 설정 (DOM 변화 감지)
-  mutationObserver = new MutationObserver(() => {
-  applyBottomHeight();
-  
-  // 바텀 액션 엘리먼트가 변경되면 ResizeObserver 재설정
-  const currentBottomEl = scopeEl.querySelector(bottomSelector) as HTMLElement | null;
-  
-  if (resizeObserver) {
-  resizeObserver.disconnect();
-  if (currentBottomEl) {
-  resizeObserver.observe(currentBottomEl);
-  }
-  }
-  });
-  
-  mutationObserver.observe(container, {
-  childList: true,
-  subtree: true,
-  });
-  } catch (error) {
-  console.error(“Failed to setup observers:”, error);
-  }
-  };
-
-/**
-
-- 옵저버 정리
-  */
-  const cleanupObservers = () => {
-  if (resizeObserver) {
-  resizeObserver.disconnect();
-  resizeObserver = null;
-  }
-  if (mutationObserver) {
-  mutationObserver.disconnect();
-  mutationObserver = null;
-  }
-  };
-
-// 스크롤 감지
-watch([scrollY, windowHeight], () => {
-checkScrollPosition();
+// Props 정의
+const props = withDefaults(defineProps<ScKeypadProps>(), {
+  showRearrange: false,
+  value: () => [],
 });
 
-// 초기화
+const emit = defineEmits<{
+  "update:values": [value: string[]];
+}>();
+
+console.log(props.showRearrange);
+
+// 반응형 데이터
+const voiceMessage = ref("카드번호를 입력해주세요. 총 16자리입니다.");
+const inputCount = ref(0);
+const messageBox = ref(null);
+const isDarkTheme = ref(false);
+const values = ref<string[]>([]);
+
+// 테마 토글 함수
+function toggleTheme() {
+  isDarkTheme.value = !isDarkTheme.value;
+}
+
+// 숫자 배열 (0~9)
+const numbers = ref(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]);
+
+// 음성 메시지 업데이트 함수
+function updateVoiceMessage(text: string) {
+  voiceMessage.value = text;
+  if (messageBox.value) {
+    (messageBox.value as HTMLElement).style.visibility = "visible";
+  }
+}
+
+// 숫자 버튼 클릭 핸들러
+function handleNumberClick(number: string) {
+  values.value.push(number);
+  emit("update:values", values.value);
+
+  if (inputCount.value < 16) {
+    // 00 버튼인 경우 2자리 입력으로 처리
+    if (number === "00") {
+      if (inputCount.value <= 14) {
+        // 2자리 입력 가능한지 확인
+        inputCount.value += 2;
+        const currentInput = inputCount.value;
+        updateVoiceMessage(`총 16자리 중 ${currentInput}자리 입력 완료: 00`);
+      } else {
+        // 15자리일 때는 00 입력 불가
+        updateVoiceMessage("마지막 1자리만 입력 가능합니다.");
+        return;
+      }
+    } else {
+      // 일반 숫자 버튼
+      inputCount.value++;
+      const currentInput = inputCount.value;
+      updateVoiceMessage(`총 16자리 중 ${currentInput}번째 입력: ${number}`);
+    }
+
+    // 카드번호 형식으로 그룹핑된 안내
+    if (inputCount.value === 4) {
+      updateVoiceMessage("첫 번째 4자리 입력 완료. 다음 4자리를 입력해주세요.");
+    } else if (inputCount.value === 8) {
+      updateVoiceMessage("두 번째 4자리 입력 완료. 다음 4자리를 입력해주세요.");
+    } else if (inputCount.value === 12) {
+      updateVoiceMessage("세 번째 4자리 입력 완료. 마지막 4자리를 입력해주세요.");
+    } else if (inputCount.value === 16) {
+      updateVoiceMessage("카드번호 입력이 완료되었습니다. 확인 버튼을 눌러주세요.");
+    }
+  } else {
+    updateVoiceMessage("최대 입력 개수에 도달했습니다.");
+  }
+  console.log("values.value::>", values.value);
+}
+
+// 삭제 버튼 클릭 핸들러
+function handleDeleteClick() {
+  if (inputCount.value > 0) {
+    // 마지막 입력이 00인지 확인 (짝수 자리이고 마지막 두 자리가 00인 경우)
+    const isLastInputDoubleZero = inputCount.value % 2 === 0 && inputCount.value >= 2;
+
+    if (isLastInputDoubleZero) {
+      // 00 입력을 삭제하는 경우 2자리 삭제
+      inputCount.value -= 2;
+      updateVoiceMessage(`총 16자리 중 ${inputCount.value}자리 남음. 00이 삭제되었습니다.`);
+    } else {
+      // 일반 숫자 삭제
+      inputCount.value--;
+      updateVoiceMessage(`총 16자리 중 ${inputCount.value}자리 남음. 삭제되었습니다.`);
+    }
+
+    if (inputCount.value === 0) {
+      updateVoiceMessage("입력이 초기화되었습니다. 카드번호를 입력해주세요.");
+    }
+  } else {
+    updateVoiceMessage("삭제할 입력이 없습니다.");
+  }
+}
+
+// 재배열 버튼 클릭 핸들러
+function handleRearrangeClick() {
+  // 0~9 숫자를 랜덤하게 재배열
+  const shuffledNumbers: any[] = [...numbers.value];
+  for (let i = shuffledNumbers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledNumbers[i], shuffledNumbers[j]] = [shuffledNumbers[j], shuffledNumbers[i]];
+  }
+  numbers.value = shuffledNumbers;
+
+  // 재배열된 숫자 순서를 음성으로 안내
+  const numberSequence = numbers.value.join(", ");
+  updateVoiceMessage(`숫자 키패드가 재배열되었습니다. 새로운 순서는 ${numberSequence}입니다.`);
+}
+
+// 컴포넌트 마운트 시 초기화
 onMounted(() => {
-applyBottomHeight();
-setupObservers();
-checkScrollPosition();
+  updateVoiceMessage("카드번호를 입력해주세요. 총 16자리입니다.");
 });
+</script>
 
-// 정리
-onUnmounted(() => {
-cleanupObservers();
-});
+<style lang="scss" scoped>
+@use "@assets/styles/pages/module/keypad" as *; // keypad
+</style>
 
-return {
-// 상태
-bottomHeight: computed(() => bottomHeight.value),
-bottomHeightRem: computed(() => bottomHeightRem.value),
-isScrolled: computed(() => isScrolled.value),
-isAtBottom: computed(() => isAtBottom.value),
 
-```
-// 메서드
-refresh: applyBottomHeight,
-cleanup: cleanupObservers,
-```
+================================================================================================================================================================
 
-};
-}
+<template>
+  <InputFieldCell
+    description="안내메시지"
+    errorMessage="에러메시지"
+    :inputItems="inputItems"
+    label="인증번호"
+    required
+    tooltip="툴팁메시지"
+    v-model="values"
+    v-model:values="values"
+    v-model:valuesArray="values"
+    @update:modelValue="values = $event"
+    @update:values="values = $event"
+    @update:valuesArray="values = $event"
+  />
+  <ScKeypad
+    :showRearrange="true"
+    v-model="values"
+    @update:values="values = $event"
+  ></ScKeypad>
+</template>
+
+<script setup lang="ts">
+import { InputFieldCell } from "@shc-nss/ui/solid";
+import { ref } from "vue";
+import ScKeypad from "~/components/shc/keypad/ScKeypad.vue";
+
+const values = ref([]);
+const inputItems = [
+  {
+    id: "cell1",
+    name: "cell1",
+    label: "첫 번째",
+    type: "square",
+  },
+  {
+    id: "cell2",
+    name: "cell2",
+    label: "두 번째",
+    type: "square",
+  },
+  {
+    id: "cell3",
+    name: "cell3",
+    label: "세 번째",
+    type: "square",
+  },
+  {
+    id: "cell4",
+    name: "cell4",
+    label: "네 번째",
+    type: "square",
+  },
+  {
+    id: "cell5",
+    name: "cell5",
+    label: "다섯 번째",
+    type: "square",
+  },
+  {
+    id: "cell6",
+    name: "cell6",
+    label: "여섯 번째",
+    type: "square",
+  },
+];
+</script>
+
