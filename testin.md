@@ -1,979 +1,494 @@
-<route lang="yaml">
-meta:
-  id: input-field
-  title: Input field
-  menu: Module > Input field Module
-  layout: EmptyLayout
-  category: Module
-  publish: 김대민
-  publishVersion: 0.8
-  navbar: false
-</route>
+import type { Meta, StoryObj } from "@storybook/vue3";
+import { ref } from "vue";
+import ScKeypad from "./ScKeypad.vue";
 
+const meta: Meta<typeof ScKeypad> = {
+  title: "SHC/ScKeypad",
+  component: ScKeypad,
+  parameters: {
+    layout: "centered",
+    docs: {
+      description: {
+        component: `
+가상 키패드 컴포넌트
+
+## 주요 기능
+- 🔢 **숫자 입력**: 0-9 숫자 및 00 버튼 지원
+- 🔄 **재배열**: 보안을 위한 숫자 랜덤 재배열 기능
+- 🎨 **테마**: 라이트/다크 테마 지원
+- ♿ **접근성**: 스크린 리더 음성 안내 지원
+- 📱 **반응형**: 모바일 최적화
+
+## 사용 예시
+\`\`\`vue
 <template>
-  <div class="demo-title">0. UniversalInputField 사용 예시 (모든 props 사용 가능)</div>
-  <!-- S : UniversalInputField 사용 예시 -->
-  <div class="sc-input__field">
-    <div class="input-field__group not-counter">
-      <!-- 주민등록번호 - type으로 간단히 -->
-      <div class="field-item">
-        <UniversalInputField
-          type="rrn"
-          v-model="universalRrnValues"
-          :input-field-props="{
-            required: true,
-            showClear: false,
-          }"
-        />
-      </div>
-
-      <!-- 휴대폰번호 - 모든 InputField props 사용 -->
-      <div class="field-item">
-        <UniversalInputField
-          type="phone"
-          v-model="universalPhoneValues"
-          :input-field-props="{
-            required: true,
-            showClear: true,
-            description: '본인 명의의 휴대폰번호를 입력해주세요',
-          }"
-          field-info="휴대폰번호는 필수 입력항목입니다."
-        />
-      </div>
-
-      <!-- 카드번호 (4개 분할) - 에러 상태 -->
-      <div class="field-item">
-        <UniversalInputField
-          type="card-number-split"
-          v-model="universalCardValues"
-          :input-field-props="{
-            required: false,
-            tooltip: '툴팁메시지',
-            showClear: false,
-            error: true,
-            errorMessage: '카드번호를 확인해주세요',
-            description: '안내메시지',
-          }"
-        />
-      </div>
-
-      <!-- 금액 입력 - 추가 슬롯 사용 -->
-      <div class="field-item amount-field">
-        <UniversalInputField
-          type="amount"
-          v-model="universalAmountValues"
-          wrapper-class="amount-field"
-          :input-field-props="{
-            required: true,
-            showClear: !!universalAmountValues.amount,
-            description: '최소 10만원 / 최대 3,500만원',
-          }"
-        >
-          <template #additional>
-            <BoxButtonGroup
-              variant="30:30:30"
-              size="small"
-            >
-              <BoxButton
-                text="+10만"
-                color="tertiary"
-                size="medium"
-                @click="addUniversalAmount(100000)"
-              />
-              <BoxButton
-                text="+50만"
-                color="tertiary"
-                size="medium"
-                @click="addUniversalAmount(500000)"
-              />
-              <BoxButton
-                text="+100만"
-                color="tertiary"
-                size="medium"
-                @click="addUniversalAmount(1000000)"
-              />
-              <BoxButton
-                text="+1,000만"
-                color="tertiary"
-                size="medium"
-                @click="addUniversalAmount(10000000)"
-              />
-            </BoxButtonGroup>
-          </template>
-        </UniversalInputField>
-      </div>
-    </div>
-  </div>
-  <!-- E : UniversalInputField 사용 예시 -->
-
-  <div class="demo-title">0-1. DropdownInputField 사용 예시 (Dropdown + InputField 조합)</div>
-  <!-- S : DropdownInputField 사용 예시 -->
-  <div class="sc-input__field">
-    <div class="input-field__group not-counter">
-      <!-- 통신사 + 휴대폰번호 -->
-      <div class="field-item">
-        <DropdownInputField
-          type="phone-with-carrier"
-          v-model="dropdownPhoneNumber"
-          v-model:dropdown="dropdownCarrier"
-          :options="carrierOptions"
-          :input-field-props="{
-            required: true,
-            showClear: true,
-          }"
-          :dropdown-props="{
-            placeholder: '통신사',
-          }"
-          :bottom-sheet-props="{
-            title: '통신사를 선택해주세요',
-          }"
-          :auto-format="true"
-          :validate-on-blur="true"
-        />
-      </div>
-
-      <!-- 직업 + 상세 (커스텀 validator 사용) -->
-      <div class="field-item">
-        <DropdownInputField
-          type="text"
-          v-model="jobDetail"
-          v-model:dropdown="selectedJob"
-          :options="jobOptions"
-          :input-field-props="{
-            label: '직업 상세',
-            placeholder: '상세 내용을 입력하세요',
-            required: true,
-          }"
-          :dropdown-props="{
-            placeholder: '직업 선택',
-          }"
-          :bottom-sheet-props="{
-            title: '직업을 선택해주세요',
-          }"
-          :validator="(value) => (value.length < 2 ? '2자 이상 입력해주세요' : '')"
-          :validate-on-blur="true"
-        />
-      </div>
-    </div>
-  </div>
-  <!-- E : DropdownInputField 사용 예시 -->
-
-  <div class="demo-title">1. 인풋 안내 정보가 없는 기본형</div>
-  <!-- S : 1. 인풋 안내 정보가 없는 기본형 -->
-  <div class="sc-input__field">
-    <div class="input-field__group not-counter">
-      <div class="field-item">
-        <!-- 주민등록번호 -->
-        <InputField
-          label="주민등록번호"
-          :required="true"
-          :input-items="rrnInputItems"
-          v-model:values="rrnValues"
-          :show-clear="false"
-        />
-      </div>
-
-      <div class="field-item">
-        <!-- 주민등록번호 Error 예시 -->
-        <InputField
-          label="주민등록번호"
-          :required="true"
-          :input-items="rrnInputItems"
-          v-model:values="rrnErrorValues"
-          :show-clear="false"
-          :error="true"
-          error-message="에러 메시지"
-          :length="0"
-        />
-      </div>
-    </div>
-
-    <div class="input-field__group not-counter">
-      <!-- 카드 비밀번호 -->
-      <div class="field-item">
-        <InputField
-          label="카드 비밀번호"
-          :required="true"
-          :input-items="cardPinInputItems"
-          v-model:values="cardPinValues"
-          :show-clear="true"
-        />
-      </div>
-
-      <!-- 카드 비밀번호 Error 예시 -->
-      <div class="field-item">
-        <InputField
-          label="카드 비밀번호"
-          :required="true"
-          :input-items="cardPinInputItems"
-          v-model:values="cardPinErrorValues"
-          :show-clear="true"
-          :error="true"
-          error-message="비밀번호 4자리를 입력해주세요"
-        />
-      </div>
-    </div>
-  </div>
-  <!-- E : 1. 인풋 안내 정보가 없는 기본형 -->
-
-  <div class="demo-title">2. 인풋 안내 정보가 있는 형태</div>
-  <!-- S : 2. 인풋 안내 정보가 있는 형태 -->
-  <div class="sc-input__field">
-    <!-- 사업자등록번호 그룹 -->
-    <div class="input-field__group not-counter">
-      <!-- 사업자등록번호 -->
-      <div class="field-item">
-        <InputField
-          label="사업자등록번호"
-          :required="true"
-          :input-items="businessNumberInputItems"
-          v-model:values="businessNumberValues"
-          :show-clear="true"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">
-          사업자등록번호는 필수 입력항목입니다. 신한카드 가맹점주가 아니면 사업자등록증 사본을
-          제출해주세요.
-        </p>
-      </div>
-
-      <!-- 사업자등록번호 Error 예시 -->
-      <div class="field-item">
-        <InputField
-          label="사업자등록번호"
-          :required="true"
-          :input-items="businessNumberInputItems"
-          v-model:values="businessNumberErrorValues"
-          :show-clear="true"
-          :error="true"
-          error-message="에러메세지"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">
-          사업자등록번호는 필수 입력항목입니다. 신한카드 가맹점주가 아니면 사업자등록증 사본을
-          제출해주세요.
-        </p>
-      </div>
-    </div>
-
-    <!-- 노동조합지부 그룹 -->
-    <div class="input-field__group not-counter">
-      <!-- 노동조합지부 -->
-      <div class="field-item">
-        <InputField
-          label="노동조합지부"
-          :required="true"
-          :input-items="unionBranchInputItems"
-          v-model:values="unionBranchValues"
-          :show-clear="true"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">
-          지역 대표전화 뒤의 2자리 숫자를 입력해주세요. 예) 서울: 02, 경기: 31, 인천: 32, 세종: 44
-          등
-        </p>
-      </div>
-
-      <!-- 노동조합지부 Error 예시 -->
-      <div class="field-item">
-        <InputField
-          label="노동조합지부"
-          :required="true"
-          :input-items="unionBranchInputItems"
-          v-model:values="unionBranchErrorValues"
-          :show-clear="true"
-          :error="true"
-          error-message="에러메세지"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">
-          지역 대표전화 뒤의 2자리 숫자를 입력해주세요. 예) 서울: 02, 경기: 31, 인천: 32, 세종: 44
-          등
-        </p>
-      </div>
-    </div>
-
-    <!-- 휴대폰번호 그룹 -->
-    <div class="input-field__group not-counter">
-      <!-- 휴대폰번호 -->
-      <div class="field-item">
-        <InputField
-          label="휴대폰번호"
-          :required="true"
-          :input-items="phoneNumberInputItems"
-          v-model:values="phoneNumberValues"
-          :show-clear="true"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">
-          휴대폰번호는 필수 입력항목입니다. 본인 명의의 휴대폰번호를 입력해주세요.
-        </p>
-      </div>
-
-      <!-- 휴대폰번호 Error 예시 -->
-      <div class="field-item">
-        <InputField
-          label="휴대폰번호"
-          :required="true"
-          :input-items="phoneNumberInputItems"
-          v-model:values="phoneNumberErrorValues"
-          :show-clear="true"
-          :error="true"
-          error-message="에러메세지"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">
-          휴대폰번호는 필수 입력항목입니다. 본인 명의의 휴대폰번호를 입력해주세요.
-        </p>
-      </div>
-    </div>
-
-    <!-- 영문성명 그룹 -->
-    <div class="input-field__group not-counter">
-      <!-- 영문성명 -->
-      <div class="field-item">
-        <InputField
-          label="영문성"
-          :required="true"
-          :input-items="englishNameInputItems"
-          v-model:values="englishNameValues"
-          :show-clear="true"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">입력안내 문구 제공은 Item/Footer의 컬러가 유지됩니다.</p>
-      </div>
-
-      <!-- 영문성명 Error 예시 -->
-      <div class="field-item">
-        <InputField
-          label="영문성"
-          :required="true"
-          :input-items="englishNameInputItems"
-          v-model:values="englishNameErrorValues"
-          :show-clear="true"
-          :error="true"
-          error-message="에러메세지"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">입력안내 문구 제공은 Item/Footer의 컬러가 유지됩니다.</p>
-      </div>
-    </div>
-  </div>
-  <!-- E : 2. 인풋 안내 정보가 있는 형태 -->
-
-  <div class="demo-title">3. 안내정보와 오류 메세지가 동일한 경우</div>
-  <!-- S : 3. 안내정보와 오류 메세지가 동일한 경우 -->
-  <div class="sc-input__field">
-    <div class="input-field__group">
-      <!-- 레이블 필드 -->
-      <div class="field-item">
-        <InputField
-          label="레이블"
-          :required="true"
-          :input-items="textFieldInputItems"
-          v-model:values="textFieldValues"
-          :show-clear="true"
-          description="10자 이내로 입력하세요"
-        />
-      </div>
-
-      <!-- 레이블 필드 Error 예시 -->
-      <div class="field-item">
-        <InputField
-          label="레이블"
-          :required="true"
-          :input-items="textFieldInputItems"
-          v-model:values="textFieldErrorValues"
-          :show-clear="true"
-          :error="true"
-          error-message="10자 이내로 입력하세요"
-        />
-      </div>
-    </div>
-  </div>
-  <!-- E : 3. 안내정보와 오류 메세지가 동일한 경우 -->
-
-  <div class="demo-title">4. 안내정보와 오류 메세지가 동일하고 안내 정보가 같이 제공되는경우</div>
-  <!-- S : 4. 안내정보와 오류 메세지가 동일하고 안내 정보가 같이 제공되는경우 -->
-  <div class="sc-input__field">
-    <div class="input-field__group not-counter">
-      <!-- 레이블 필드 -->
-      <div class="field-item">
-        <InputField
-          label="레이블"
-          :required="true"
-          :input-items="textField2InputItems"
-          v-model:values="textField2Values"
-          :show-clear="true"
-          description="입력한 번호는 고객님 정보로 등록돼요."
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">입력안내 문구 제공은 Item/Footer의 컬러가 유지됩니다.</p>
-      </div>
-
-      <!-- 레이블 필드 Error 예시 -->
-      <div class="field-item">
-        <InputField
-          label="레이블"
-          :required="true"
-          :input-items="textField2InputItems"
-          v-model:values="textField2ErrorValues"
-          :show-clear="true"
-          :error="true"
-          error-message="에러메세지"
-        />
-        <!-- field-info는 컴포넌트에 없는 유형으로 InputHelper 컴포넌트 보다 하단애 위치하는 구조 -->
-        <p class="field-info">입력안내 문구 제공은 Item/Footer의 컬러가 유지됩니다.</p>
-      </div>
-    </div>
-  </div>
-  <!-- E : 4. 안내정보와 오류 메세지가 동일하고 안내 정보가 같이 제공되는경우 -->
-
-  <div class="demo-title">5. 금액 단독입력 라인 인풋필드 (카드 특화)</div>
-  <!-- S : 5. 금액 단독입력 라인 인풋필드 (카드 특화) -->
-  <div class="sc-input__field">
-    <div class="input-field__group not-counter">
-      <!-- 금액 입력 필드 -->
-      <div class="field-item amount-field">
-        <InputField
-          :required="true"
-          :input-items="amountInputItems"
-          v-model:values="amountValues"
-          :show-clear="!!amountValues.amount"
-          variant="underline"
-          description="최소 10만원 / 최대 3,500만원"
-        />
-
-        <!-- 빠른 추가 버튼들 -->
-        <BoxButtonGroup
-          variant="30:30:30"
-          size="small"
-        >
-          <BoxButton
-            text="+10만"
-            color="tertiary"
-            size="medium"
-            @click="addAmount(100000)"
-          />
-          <BoxButton
-            text="+50만"
-            color="tertiary"
-            size="medium"
-            @click="addAmount(500000)"
-          />
-          <BoxButton
-            text="+100만"
-            color="tertiary"
-            size="medium"
-            @click="addAmount(1000000)"
-          />
-          <BoxButton
-            text="+1,000만"
-            color="tertiary"
-            size="medium"
-            @click="addAmount(10000000)"
-          />
-        </BoxButtonGroup>
-      </div>
-
-      <!-- 금액 입력 필드 Error 예시 -->
-      <div class="field-item amount-field">
-        <InputField
-          :required="true"
-          :input-items="amountInputItems"
-          v-model:values="amountErrorValues"
-          :show-clear="!!amountErrorValues.amount"
-          :error="true"
-          error-message="최소 10만원 / 최대 3,500만원"
-          variant="underline"
-        />
-
-        <!-- 빠른 추가 버튼들 -->
-        <BoxButtonGroup
-          variant="30:30:30"
-          size="small"
-        >
-          <BoxButton
-            text="+10만"
-            color="tertiary"
-            size="medium"
-            @click="addAmountError(100000)"
-          />
-          <BoxButton
-            text="+50만"
-            color="tertiary"
-            size="medium"
-            @click="addAmountError(500000)"
-          />
-          <BoxButton
-            text="+100만"
-            color="tertiary"
-            size="medium"
-            @click="addAmountError(1000000)"
-          />
-          <BoxButton
-            text="+1,000만"
-            color="tertiary"
-            size="medium"
-            @click="addAmountError(10000000)"
-          />
-        </BoxButtonGroup>
-      </div>
-
-      <!-- 금액 입력 필드 Disabled 예시 -->
-      <div class="field-item amount-field">
-        <InputField
-          :required="true"
-          :input-items="amountInputItems"
-          v-model:values="amountDisabledValues"
-          :show-clear="false"
-          :disabled="true"
-          variant="underline"
-          description="최소 10만원 / 최대 3,500만원"
-        />
-
-        <!-- 빠른 추가 버튼들 -->
-        <BoxButtonGroup
-          variant="30:30:30"
-          size="small"
-        >
-          <BoxButton
-            text="+10만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountDisabled(100000)"
-          />
-          <BoxButton
-            text="+50만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountDisabled(500000)"
-          />
-          <BoxButton
-            text="+100만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountDisabled(1000000)"
-          />
-          <BoxButton
-            text="+1,000만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountDisabled(10000000)"
-          />
-        </BoxButtonGroup>
-      </div>
-
-      <!-- 금액 입력 필드 Readonly 예시 -->
-      <div class="field-item amount-field">
-        <InputField
-          :required="true"
-          :input-items="amountInputItems"
-          v-model:values="amountReadonlyValues"
-          :show-clear="false"
-          :readonly="true"
-          :disabled="true"
-          variant="underline"
-          description="최소 10만원 / 최대 3,500만원"
-        />
-
-        <!-- 빠른 추가 버튼들 -->
-        <BoxButtonGroup
-          variant="30:30:30"
-          size="small"
-        >
-          <BoxButton
-            text="+10만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountReadonly(100000)"
-          />
-          <BoxButton
-            text="+50만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountReadonly(500000)"
-          />
-          <BoxButton
-            text="+100만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountReadonly(1000000)"
-          />
-          <BoxButton
-            text="+1,000만"
-            color="tertiary"
-            size="medium"
-            :disabled="true"
-            @click="addAmountReadonly(10000000)"
-          />
-        </BoxButtonGroup>
-      </div>
-    </div>
-  </div>
-  <!-- E : 5. 금액 단독입력 라인 인풋필드 (카드 특화) -->
-
-  <div class="demo-title">6. 카드번호 입력 인풋</div>
-  <!-- S : 6. 카드번호 입력 인풋 -->
-  <div class="sc-input__field">
-    <div class="input-field__group">
-      <!-- 카드번호 입력 필드 (한줄 유형) -->
-      <div class="field-item card-number-single-field">
-        <UniversalInputField
-          type="card-number-single"
-          v-model="universalCardSingleValues"
-          :input-field-props="{
-            required: true,
-            showClear: false,
-          }"
-        />
-      </div>
-
-      <!-- 카드번호 입력 필드 (한줄 유형 - 에러 상태) -->
-      <div class="field-item card-number-single-field">
-        <UniversalInputField
-          type="card-number-single"
-          v-model="universalCardSingleErrorValues"
-          :input-field-props="{
-            required: true,
-            error: true,
-            errorMessage: '안내메시지(문구는 추후 개발 전달 예정)',
-            showClear: false,
-          }"
-        />
-      </div>
-
-      <!-- 카드번호 입력 필드 (한줄 유형 - 비활성화) -->
-      <div class="field-item card-number-single-field">
-        <UniversalInputField
-          type="card-number-single"
-          v-model="universalCardSingleDisabledValues"
-          :input-field-props="{
-            required: true,
-            disabled: true,
-            showClear: false,
-          }"
-        />
-      </div>
-
-      <!-- 카드번호 입력 필드 (한줄 유형 - 읽기전용) -->
-      <div class="field-item card-number-single-field">
-        <UniversalInputField
-          type="card-number-single"
-          v-model="universalCardSingleReadonlyValues"
-          :input-field-props="{
-            required: true,
-            tooltip: '툴팁메시지',
-            readonly: true,
-            disabled: true,
-            showClear: false,
-          }"
-        />
-      </div>
-    </div>
-    <div class="input-field__group">
-      <!-- 카드번호 입력 필드 (4개 분할) -->
-      <div class="field-item">
-        <UniversalInputField
-          type="card-number-split"
-          v-model="universalCardSplitValues"
-          :input-field-props="{
-            label: '레이블',
-            required: false,
-            tooltip: '툴팁메시지',
-            showClear: false,
-            description: '안내메시지',
-          }"
-        />
-      </div>
-
-      <!-- 카드번호 입력 필드 (4개 분할 - 에러 상태) -->
-      <div class="field-item">
-        <UniversalInputField
-          type="card-number-split"
-          v-model="universalCardSplitErrorValues"
-          :input-field-props="{
-            label: '레이블',
-            required: false,
-            tooltip: '툴팁메시지',
-            error: true,
-            errorMessage: '안내메시지(문구는 추후 개발 전달 예정)',
-            showClear: false,
-            description: '안내메시지',
-          }"
-        />
-      </div>
-
-      <!-- 카드번호 입력 필드 (4개 분할 - 비활성화) -->
-      <div class="field-item">
-        <UniversalInputField
-          type="card-number-split"
-          v-model="universalCardSplitDisabledValues"
-          :input-field-props="{
-            label: '레이블',
-            required: false,
-            tooltip: '툴팁메시지',
-            disabled: true,
-            showClear: false,
-            description: '안내메시지',
-          }"
-        />
-      </div>
-
-      <!-- 카드번호 입력 필드 (4개 분할 - 읽기전용) -->
-      <div class="field-item">
-        <UniversalInputField
-          type="card-number-split"
-          v-model="universalCardSplitReadonlyValues"
-          :input-field-props="{
-            label: '레이블',
-            required: false,
-            tooltip: '툴팁메시지',
-            readonly: true,
-            disabled: true,
-            showClear: false,
-            description: '안내메시지',
-          }"
-        />
-      </div>
-    </div>
-  </div>
-  <!-- E : 6. 카드번호 입력 인풋 -->
+  <ScKeypad 
+    v-model:values="inputValues"
+    :isDarkTheme="false"
+    :showRearrange="true"
+    :maxLength="16"
+    @number-click="handleNumberClick"
+    @delete-click="handleDelete"
+    @rearrange-click="handleRearrange"
+  />
+  <div>입력값: {{ inputValues }}</div>
 </template>
 
 <script setup>
-import { BoxButton, BoxButtonGroup } from "@/components/Button";
-import { InputField } from "@/components/InputField";
-import { ref } from "vue";
-import { DropdownInputField, UniversalInputField } from "~/components/shc/input";
+import { ref } from 'vue';
+import { ScKeypad } from '@shc-nss/ui/shc';
 
-// ============================================
-// UniversalInputField 예시 데이터
-// ============================================
-const universalRrnValues = ref({});
-const universalPhoneValues = ref({});
-const universalCardValues = ref({});
-const universalAmountValues = ref({});
+const inputValues = ref([]);
 
-// 금액 추가 함수
-const addUniversalAmount = (value) => {
-  const currentAmount = parseInt(universalAmountValues.value.amount?.replace(/[^0-9]/g, "") || "0");
-  const newAmount = currentAmount + value;
-  universalAmountValues.value = { amount: newAmount.toLocaleString() + "원" };
+function handleNumberClick(value) {
+  console.log('Number clicked:', value);
+}
+
+function handleDelete() {
+  console.log('Delete clicked');
+}
+
+function handleRearrange(numbers) {
+  console.log('Rearranged:', numbers);
+}
+</script>
+\`\`\`
+        `,
+      },
+    },
+  },
+  args: {
+    showRearrange: false,
+    isDarkTheme: false,
+    maxLength: 16,
+    initialMessage: "카드번호를 입력해주세요. 총 16자리입니다.",
+    enableGroupAnnouncement: true,
+  },
+  argTypes: {
+    showRearrange: {
+      control: "boolean",
+      description: "재배열 버튼 표시 여부 (다크 테마에서는 항상 표시)",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    isDarkTheme: {
+      control: "boolean",
+      description: "다크 테마 사용 여부",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    maxLength: {
+      control: { type: "number", min: 1, max: 20, step: 1 },
+      description: "최대 입력 자릿수",
+      table: {
+        type: { summary: "number" },
+        defaultValue: { summary: "16" },
+      },
+    },
+    initialMessage: {
+      control: "text",
+      description: "초기 음성 메시지",
+      table: {
+        type: { summary: "string" },
+        defaultValue: { summary: "카드번호를 입력해주세요. 총 16자리입니다." },
+      },
+    },
+    enableGroupAnnouncement: {
+      control: "boolean",
+      description: "4자리 단위로 그룹핑 안내 여부",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "true" },
+      },
+    },
+  },
 };
 
-// ============================================
-// DropdownInputField 예시 데이터
-// ============================================
-const dropdownPhoneNumber = ref("");
-const dropdownCarrier = ref("");
-const carrierOptions = ref([
-  { label: "SKT", value: "SKT" },
-  { label: "KT", value: "KT" },
-  { label: "LG U+", value: "LG U+" },
-  { label: "SKT 알뜰폰", value: "SKT 알뜰폰" },
-  { label: "KT 알뜰폰", value: "KT 알뜰폰" },
-  { label: "LG U+ 알뜰폰", value: "LG U+ 알뜰폰" },
-]);
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-const jobDetail = ref("");
-const selectedJob = ref("");
-const jobOptions = ref([
-  { label: "회사원", value: "office_worker" },
-  { label: "자영업", value: "self_employed" },
-  { label: "프리랜서", value: "freelancer" },
-  { label: "학생", value: "student" },
-  { label: "기타", value: "etc" },
-]);
+// ============================================================================
+// 기본 스토리들
+// ============================================================================
 
-// 주민등록번호 듀얼 입력 (앞자리 + 뒷자리)
-const rrnValues = ref({});
-const rrnErrorValues = ref({});
-const rrnInputItems = [
-  {
-    id: "rrn1",
-    name: "rrn1",
-    type: "tel",
-    placeholder: "생년월일 6자리",
-    mask: "######",
-    length: 6,
-    inputmode: "numeric",
-  },
-  {
-    id: "rrn2",
-    name: "rrn2",
-    type: "tel",
-    placeholder: "뒷자리 첫번째 숫자 입력",
-    length: 1,
-    inputmode: "numeric",
-    mask: {
-      mask: "nMMMMMM",
-      overwrite: true,
-      definitions: {
-        n: { mask: "#", placeholderChar: "○" },
-        m: { mask: "#", displayChar: "●", placeholderChar: "○" },
-        M: { mask: "#", displayChar: "●", placeholderChar: "●" },
-      },
-      clearIncomplete: false,
-      skipInvalid: true,
-      lazy: false,
-      eager: true,
-    },
-  },
-];
-
-// 숫자 입력 필드들 - inputItems 방식으로 변경
-const cardPinValues = ref({});
-const cardPinErrorValues = ref({});
-const cardPinInputItems = [
-  {
-    id: "cardPin",
-    name: "cardPin",
-    type: "tel",
-    label: "카드 비밀번호",
-    placeholder: "카드 비밀번호 입력",
-    length: 4,
-    mask: {
-      mask: "####",
-      overwrite: false,
-      definitions: {
-        "#": { mask: "#", displayChar: "●" },
+export const Default: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: "기본 키패드 구성입니다. v-model:values를 사용하여 입력값을 양방향 바인딩합니다.",
       },
     },
   },
-];
+  render: (args: any) => ({
+    components: { ScKeypad },
+    setup() {
+      const inputValues = ref<string[]>([]);
+      const eventLogs = ref<string[]>([]);
 
-const businessNumberValues = ref({});
-const businessNumberErrorValues = ref({});
-const businessNumberInputItems = [
-  {
-    id: "businessNumber",
-    name: "businessNumber",
-    type: "tel",
-    label: "사업자등록번호",
-    placeholder: "사업자등록번호 입력",
-    length: 10,
+      const handleNumberClick = (value: string) => {
+        eventLogs.value.unshift(`숫자 입력: ${value}`);
+        if (eventLogs.value.length > 5) eventLogs.value.pop();
+      };
+
+      const handleDeleteClick = () => {
+        eventLogs.value.unshift(`삭제`);
+        if (eventLogs.value.length > 5) eventLogs.value.pop();
+      };
+
+      const handleRearrangeClick = (numbers: string[]) => {
+        eventLogs.value.unshift(`재배열: [${numbers.join(", ")}]`);
+        if (eventLogs.value.length > 5) eventLogs.value.pop();
+      };
+
+      return { args, inputValues, eventLogs, handleNumberClick, handleDeleteClick, handleRearrangeClick };
+    },
+    template: `
+      <div style="max-width: 400px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">입력값 (v-model:values)</div>
+          <div style="font-size: 24px; letter-spacing: 2px; font-family: monospace; min-height: 32px;">
+            {{ inputValues.join('') || '&nbsp;' }}
+          </div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">
+            {{ inputValues.length }} / {{ args.maxLength }} 자리
+          </div>
+          <div style="font-size: 11px; color: #999; margin-top: 8px; font-family: monospace;">
+            배열: [{{ inputValues.join(', ') }}]
+          </div>
+        </div>
+        
+        <ScKeypad 
+          v-bind="args"
+          v-model:values="inputValues"
+          @number-click="handleNumberClick"
+          @delete-click="handleDeleteClick"
+          @rearrange-click="handleRearrangeClick"
+        />
+        
+        <div style="margin-top: 20px; padding: 12px; background: #f9f9f9; border-radius: 8px; font-size: 12px;">
+          <div style="font-weight: 600; margin-bottom: 8px;">이벤트 로그</div>
+          <div v-for="(log, index) in eventLogs" :key="index" style="padding: 4px 0; color: #666;">
+            {{ log }}
+          </div>
+          <div v-if="eventLogs.length === 0" style="color: #999;">
+            키패드를 사용해보세요
+          </div>
+        </div>
+      </div>
+    `,
+  }),
+};
+
+export const LightTheme: Story = {
+  args: {
+    isDarkTheme: false,
+    showRearrange: false,
   },
-];
-
-const phoneNumberValues = ref({});
-const phoneNumberErrorValues = ref({});
-const phoneNumberInputItems = [
-  {
-    id: "phoneNumber",
-    name: "phoneNumber",
-    type: "tel",
-    label: "휴대폰번호",
-    placeholder: "휴대폰번호 입력",
-    length: 11,
-    mask: {
-      mask: "###-####-####",
-      overwrite: false,
+  parameters: {
+    docs: {
+      description: {
+        story: "라이트 테마 키패드입니다. 00 버튼이 표시됩니다.",
+      },
     },
   },
-];
+  render: (args: any) => ({
+    components: { ScKeypad },
+    setup() {
+      const inputValues = ref<string[]>([]);
 
-// 텍스트 입력 필드들 - inputItems 방식으로 변경
-const unionBranchValues = ref({});
-const unionBranchErrorValues = ref({});
-const unionBranchInputItems = [
-  {
-    id: "unionBranch",
-    name: "unionBranch",
-    label: "노동조합지부",
-    placeholder: "사업자등록번호 입력",
-    length: 20,
-    inputmode: "text",
+      return { args, inputValues };
+    },
+    template: `
+      <div style="max-width: 400px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">입력값</div>
+          <div style="font-size: 24px; letter-spacing: 2px; font-family: monospace; min-height: 32px;">
+            {{ inputValues.join('') || '&nbsp;' }}
+          </div>
+        </div>
+        
+        <ScKeypad 
+          v-bind="args"
+          v-model:values="inputValues"
+        />
+      </div>
+    `,
+  }),
+};
+
+export const DarkTheme: Story = {
+  args: {
+    isDarkTheme: true,
+    showRearrange: true,
   },
-];
-
-const englishNameValues = ref({});
-const englishNameErrorValues = ref({});
-const englishNameInputItems = [
-  {
-    id: "englishName",
-    name: "englishName",
-    label: "영문성명",
-    placeholder: "영문이름",
-    length: 50,
-    inputmode: "latin",
-    lang: "en-US",
+  parameters: {
+    docs: {
+      description: {
+        story: "다크 테마 키패드입니다. 재배열 버튼이 표시됩니다.",
+      },
+    },
   },
-];
+  render: (args: any) => ({
+    components: { ScKeypad },
+    setup() {
+      const inputValue = ref("");
+      const rearrangeCount = ref(0);
 
-const textFieldValues = ref({});
-const textFieldErrorValues = ref({});
-const textFieldInputItems = [
-  {
-    id: "textField",
-    name: "textField",
-    label: "레이블",
-    placeholder: "플레이스홀더",
-    length: 10,
-    inputmode: "text",
-    lang: "ko",
+      const handleNumberClick = (value: string) => {
+        inputValue.value += value;
+      };
+
+      const handleDeleteClick = () => {
+        if (inputValue.value.length > 0) {
+          inputValue.value = inputValue.value.slice(0, -1);
+        }
+      };
+
+      const handleRearrangeClick = () => {
+        rearrangeCount.value++;
+      };
+
+      return { args, inputValue, rearrangeCount, handleNumberClick, handleDeleteClick, handleRearrangeClick };
+    },
+    template: `
+      <div style="max-width: 400px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: #1a1a1a; color: white; border-radius: 8px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">입력값</div>
+          <div style="font-size: 24px; letter-spacing: 2px; font-family: monospace; min-height: 32px;">
+            {{ inputValue || '&nbsp;' }}
+          </div>
+          <div style="font-size: 12px; color: #aaa; margin-top: 4px;">
+            재배열 횟수: {{ rearrangeCount }}
+          </div>
+        </div>
+        
+        <ScKeypad 
+          v-bind="args"
+          @number-click="handleNumberClick"
+          @delete-click="handleDeleteClick"
+          @rearrange-click="handleRearrangeClick"
+        />
+      </div>
+    `,
+  }),
+};
+
+export const WithRearrangeButton: Story = {
+  args: {
+    isDarkTheme: false,
+    showRearrange: true,
   },
-];
-
-const textField2Values = ref({});
-const textField2ErrorValues = ref({});
-const textField2InputItems = [
-  {
-    id: "textField2",
-    name: "textField2",
-    label: "레이블",
-    placeholder: "플레이스홀더",
-    length: 10,
-    inputmode: "text",
-    lang: "ko",
+  parameters: {
+    docs: {
+      description: {
+        story: "재배열 버튼이 활성화된 라이트 테마 키패드입니다. 00 버튼 대신 재배열 버튼이 표시됩니다.",
+      },
+    },
   },
-];
+  render: (args: any) => ({
+    components: { ScKeypad },
+    setup() {
+      const inputValue = ref("");
+      const numberOrder = ref<string[]>([]);
 
-// 금액 입력 필드들 - 카드 특화
-const amountValues = ref({});
-const amountErrorValues = ref({});
-const amountDisabledValues = ref({});
-const amountReadonlyValues = ref({ amount: "3,500만원" });
-const amountInputItems = [
-  {
-    id: "amount",
-    name: "amount",
-    type: "tel",
-    label: "금액",
-    placeholder: "1만원 단위로 입력",
-    length: 15,
-    inputmode: "numeric",
+      const handleNumberClick = (value: string) => {
+        inputValue.value += value;
+      };
+
+      const handleDeleteClick = () => {
+        if (inputValue.value.length > 0) {
+          inputValue.value = inputValue.value.slice(0, -1);
+        }
+      };
+
+      const handleRearrangeClick = (numbers: string[]) => {
+        numberOrder.value = numbers;
+      };
+
+      return { args, inputValue, numberOrder, handleNumberClick, handleDeleteClick, handleRearrangeClick };
+    },
+    template: `
+      <div style="max-width: 400px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">입력값</div>
+          <div style="font-size: 24px; letter-spacing: 2px; font-family: monospace; min-height: 32px;">
+            {{ inputValue || '&nbsp;' }}
+          </div>
+          <div v-if="numberOrder.length > 0" style="font-size: 12px; color: #666; margin-top: 8px;">
+            현재 배열: {{ numberOrder.join(', ') }}
+          </div>
+        </div>
+        
+        <ScKeypad 
+          v-bind="args"
+          @number-click="handleNumberClick"
+          @delete-click="handleDeleteClick"
+          @rearrange-click="handleRearrangeClick"
+        />
+      </div>
+    `,
+  }),
+};
+
+export const CustomMaxLength: Story = {
+  args: {
+    isDarkTheme: false,
+    showRearrange: false,
+    maxLength: 6,
+    initialMessage: "비밀번호 6자리를 입력해주세요.",
+    enableGroupAnnouncement: false,
   },
-];
+  parameters: {
+    docs: {
+      description: {
+        story: "최대 입력 길이를 6자리로 제한한 예시입니다. 비밀번호 입력 등에 활용할 수 있습니다.",
+      },
+    },
+  },
+  render: (args: any) => ({
+    components: { ScKeypad },
+    setup() {
+      const inputValue = ref("");
+      const maskedValue = ref("");
 
-// ============================================
-// UniversalInputField 카드번호 예시 데이터
-// ============================================
-const universalCardSingleValues = ref({});
-const universalCardSingleErrorValues = ref({});
-const universalCardSingleDisabledValues = ref({});
-const universalCardSingleReadonlyValues = ref({
-  cardNumber: "1234-5678-●●●●-123●",
-});
+      const handleNumberClick = (value: string) => {
+        if (inputValue.value.length < args.maxLength) {
+          inputValue.value += value;
+          maskedValue.value += "●";
+        }
+      };
 
-const universalCardSplitValues = ref({});
-const universalCardSplitErrorValues = ref({});
-const universalCardSplitDisabledValues = ref({});
-const universalCardSplitReadonlyValues = ref({
-  cardNumber1: "1234",
-  cardNumber2: "5678",
-  cardNumber3: "●●●●",
-  cardNumber4: "●●●●",
-});
-</script>
+      const handleDeleteClick = () => {
+        if (inputValue.value.length > 0) {
+          inputValue.value = inputValue.value.slice(0, -1);
+          maskedValue.value = maskedValue.value.slice(0, -1);
+        }
+      };
 
-<style lang="scss" scoped>
-@use "_input-field" as *; // Input field 모듈
-</style>
+      return { args, inputValue, maskedValue, handleNumberClick, handleDeleteClick };
+    },
+    template: `
+      <div style="max-width: 400px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">비밀번호</div>
+          <div style="font-size: 32px; letter-spacing: 8px; min-height: 40px;">
+            {{ maskedValue || '&nbsp;' }}
+          </div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">
+            {{ inputValue.length }} / {{ args.maxLength }} 자리
+          </div>
+        </div>
+        
+        <ScKeypad 
+          v-bind="args"
+          @number-click="handleNumberClick"
+          @delete-click="handleDeleteClick"
+        />
+      </div>
+    `,
+  }),
+};
+
+export const Interactive: Story = {
+  args: {
+    isDarkTheme: false,
+    showRearrange: false,
+    maxLength: 16,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "테마 전환과 재배열 기능을 테스트할 수 있는 인터랙티브 예시입니다. 버튼을 클릭하여 키패드의 다양한 기능을 체험해보세요.",
+      },
+    },
+  },
+  render: (args: any) => ({
+    components: { ScKeypad },
+    setup() {
+      const isDark = ref(false);
+      const showRearrange = ref(false);
+      const inputValue = ref("");
+
+      const toggleTheme = () => {
+        isDark.value = !isDark.value;
+      };
+
+      const toggleRearrange = () => {
+        showRearrange.value = !showRearrange.value;
+      };
+
+      const handleNumberClick = (value: string) => {
+        inputValue.value += value;
+      };
+
+      const handleDeleteClick = () => {
+        if (inputValue.value.length > 0) {
+          inputValue.value = inputValue.value.slice(0, -1);
+        }
+      };
+
+      const resetInput = () => {
+        inputValue.value = "";
+      };
+
+      return {
+        isDark,
+        showRearrange,
+        inputValue,
+        toggleTheme,
+        toggleRearrange,
+        handleNumberClick,
+        handleDeleteClick,
+        resetInput,
+      };
+    },
+    template: `
+      <div style="max-width: 400px;">
+        <div style="margin-bottom: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button 
+              @click="toggleTheme"
+              style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;"
+            >
+              {{ isDark ? '🌞 라이트' : '🌙 다크' }} 테마
+            </button>
+            <button 
+              @click="toggleRearrange"
+              style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;"
+            >
+              {{ showRearrange ? '⬜ 00' : '🔄 재배열' }} 버튼
+            </button>
+            <button 
+              @click="resetInput"
+              style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;"
+            >
+              🔄 초기화
+            </button>
+          </div>
+          
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">입력값</div>
+          <div style="font-size: 24px; letter-spacing: 2px; font-family: monospace; min-height: 32px;">
+            {{ inputValue || '&nbsp;' }}
+          </div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">
+            {{ inputValue.length }} / 16 자리
+          </div>
+        </div>
+        
+        <ScKeypad 
+          :isDarkTheme="isDark"
+          :showRearrange="showRearrange"
+          :maxLength="16"
+          @number-click="handleNumberClick"
+          @delete-click="handleDeleteClick"
+        />
+      </div>
+    `,
+  }),
+};
+
