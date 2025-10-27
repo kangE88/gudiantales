@@ -20,9 +20,9 @@
       <!-- Title (variant가 boxInBox일 때만 카드 내부 상단에 표시) -->
       <h3
         v-if="title && variant === 'boxInBox'"
-        class="data-list__title"
-      >
-        {{ title }}
+      class="data-list__title"
+    >
+      {{ title }}
       </h3>
 
       <!-- Top Group (boxInBox의 gray 영역) -->
@@ -46,11 +46,6 @@
                 :content="item.tooltip"
               />
               <small v-if="item.small">{{ item.small }}</small>
-              <Badge
-                v-if="item.badge"
-                :text="item.badge"
-                size="small"
-              />
             </template>
             <template #content>
               <ToggleSwitch
@@ -87,8 +82,8 @@
 
       <!-- Main Group -->
       <div class="data-list__group">
-        <template
-          v-for="(item, index) in items"
+      <template
+        v-for="(item, index) in items"
           :key="`main-${index}`"
         >
           <slot
@@ -111,11 +106,6 @@
                 :content="item.tooltip"
               />
               <small v-if="item.small">{{ item.small }}</small>
-              <Badge
-                v-if="item.badge"
-                :text="item.badge"
-                size="small"
-              />
               <slot
                 :name="`item-${index + 1}-title`"
                 :item="item"
@@ -179,11 +169,6 @@
               :content="item.tooltip"
             />
             <small v-if="item.small">{{ item.small }}</small>
-            <Badge
-              v-if="item.badge"
-              :text="item.badge"
-              size="small"
-            />
           </template>
           <template #content>
             <ToggleSwitch
@@ -266,11 +251,6 @@
                 :content="item.tooltip"
               />
               <small v-if="item.small">{{ item.small }}</small>
-              <Badge
-                v-if="item.badge"
-                :text="item.badge"
-                size="small"
-              />
               <slot
                 :name="`item-${index + 1}-title`"
                 :item="item"
@@ -312,8 +292,8 @@
             :item="item"
             :index="index"
           />
-        </template>
-      </div>
+      </template>
+    </div>
     </template>
   </div>
 </template>
@@ -322,7 +302,7 @@
 // ============================================================================
 // IMPORTS
 // ============================================================================
-import { Badge, BasicCard, DataList, TextButton, ToggleSwitch, Tooltip } from "@shc-nss/ui/solid";
+import { BasicCard, DataList, TextButton, ToggleSwitch, Tooltip } from "@shc-nss/ui/solid";
 import { computed, ref } from "vue";
 
 // ============================================================================
@@ -339,8 +319,6 @@ export interface ScDataListItem {
   tooltipShowClose?: boolean;
   /** 작은 텍스트 (타이틀 옆에 표시) */
   small?: string;
-  /** 배지 텍스트 */
-  badge?: string;
   /** 콘텐츠 텍스트 */
   content?: string;
   /** 콘텐츠 클릭 가능 여부 */
@@ -421,36 +399,39 @@ const props = withDefaults(defineProps<ScDataListProps>(), {
   announceChanges: true,
 });
 
+// Emit 타입 정의
+type SwitchChangePayload = {
+  index: number;
+  value: boolean;
+  item: ScDataListItem;
+  group: "top" | "main" | "bottom";
+};
+
+type ButtonClickPayload = {
+  index: number;
+  item: ScDataListItem;
+  event: Event;
+  group: "top" | "main" | "bottom";
+};
+
+type ItemClickPayload = {
+  index: number;
+  item: ScDataListItem;
+  event: Event;
+};
+
+type ContentClickPayload = {
+  index: number;
+  item: ScDataListItem;
+  event: Event;
+  group: "top" | "main" | "bottom";
+};
+
 const emit = defineEmits<{
-  /** 스위치 변경 이벤트 */
-  "switch-change": [
-    {
-      index: number;
-      value: boolean;
-      item: ScDataListItem;
-      group: "top" | "main" | "bottom";
-    },
-  ];
-  /** 버튼 클릭 이벤트 */
-  "button-click": [
-    {
-      index: number;
-      item: ScDataListItem;
-      event: Event;
-      group: "top" | "main" | "bottom";
-    },
-  ];
-  /** 아이템 클릭 이벤트 */
-  "item-click": [{ index: number; item: ScDataListItem; event: Event }];
-  /** 콘텐츠 클릭 이벤트 */
-  "content-click": [
-    {
-      index: number;
-      item: ScDataListItem;
-      event: Event;
-      group: "top" | "main" | "bottom";
-    },
-  ];
+  "switch-change": [payload: SwitchChangePayload];
+  "button-click": [payload: ButtonClickPayload];
+  "item-click": [payload: ItemClickPayload];
+  "content-click": [payload: ContentClickPayload];
 }>();
 
 // ============================================================================
@@ -644,83 +625,5 @@ defineExpose({
 </script>
 
 <style scoped lang="scss">
-// ============================================================================
-// Screen Reader Only
-// ============================================================================
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-// ============================================================================
-// Container Styles
-// ============================================================================
-.sc-data__list {
-  width: 100%;
-
-  &--dense {
-    :deep(.data-list__group) {
-      gap: 8px;
-    }
-  }
-
-  &--clickable {
-    :deep(.sv-data-list) {
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-
-      &:hover {
-        background-color: rgba(0, 0, 0, 0.02);
-      }
-
-      &:focus {
-        outline: 2px solid #007aff;
-        outline-offset: 2px;
-      }
-    }
-  }
-
-  &--no-padding {
-    :deep(.data-list__group) {
-      padding: 0;
-    }
-  }
-}
-
-// ============================================================================
-// Content Styles
-// ============================================================================
-.text-clickable {
-  cursor: pointer;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: #007aff;
-    text-decoration: underline;
-  }
-}
-
-// ============================================================================
-// Accessibility
-// ============================================================================
-@media (prefers-reduced-motion: reduce) {
-  .sc-data__list * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-@media (prefers-contrast: high) {
-  .sc-data__list {
-    outline: 1px solid;
-  }
-}
+@use "@assets/styles/module/_data-list" as *; // 모듈 영역 스타일
 </style>
