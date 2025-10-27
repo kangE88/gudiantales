@@ -1,3 +1,4 @@
+effect?: EffectType | (string & {});
 <template>
   <div :class="containerClasses">
     <!-- Screen Reader용 Live Region -->
