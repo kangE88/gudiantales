@@ -12,224 +12,118 @@ meta:
 </route>
 
 <template>
-  <div class="demo-title">유형 : [module] Scdatalist</div>
+  <div class="demo-title">유형 0 : Basic DataList (기본형 - 배열)</div>
   <section class="section">
-    <!-- <DataList
-      v-for="(item, itemIndex) in basicItems"
-      align="spaceBetween"
+    <ScDataList
+      :items="scBasicItems"
+      :listTitle="listTitle"
     >
-      <template #title>
-        <span class="data-list__text">{{ item.title }}</span>
-        <Tooltip
-          v-if="item.tooltip"
-          placement="top-left"
-          :showClose="true"
-          :content="item.tooltip"
-        />
-      </template>
-      <template #content>
-        <ToggleSwitch v-if="item.showSwitch" />
-        <span
-          v-if="item.content"
-          class="data-list__text"
-          v-html="item.content"
-        />
-        <TextButton
-          v-if="item.contentBtnText"
-          color="secondary"
-          size="small"
-          :text="item.contentBtnText"
-          :rightIcon="{ iconName: 'Chevron_right' }"
-          class="font-weight-300 spacing-none"
-        />
+      <!-- 커스텀 슬롯 예시: 특정 아이템만 커스터마이징 -->
+      <template #item-4-content="{ item }">
         <div class="data-list__btn-wrap">
           <BoxButton
-            v-if="item.memo"
             color="tertiary"
             text="메모 입력하기"
           />
         </div>
       </template>
-    </DataList> -->
-
-    <!-- 유형 1 == :items="scBasicItems" -->
-    <ScDataList
-      :items="scBasicItems"
-      :listTitle="listTitle"
-    >
     </ScDataList>
-    <Divider
-      variant="basic"
-      color="tertiary"
-      class="my-6"
+  </section>
+
+  <Divider
+    variant="basic"
+    color="tertiary"
+    class="my-6"
+  />
+
+  <div class="demo-title">유형 1 : Expandable DataList (확장형)</div>
+  <section class="section">
+    <ScDataList
+      :items="expandableItems"
+      expandLabel="더보기"
+      collapseLabel="접기"
     />
   </section>
-  <div class="demo-title">유형 : [module] Expandable datalist</div>
-  <!-- <ExpandableDataList
-    :items="expandableItems"
-    class="mt-3"
-  /> -->
-  <!-- 펼쳐짐 :defaultExpanded="true" -->
-  <ScDataList
-    :items="expandableItems"
-    :listTitle="listTitle"
-  >
-  </ScDataList>
-  <div class="demo-title">유형 1 : DataList 기본</div>
-  <!-- S : 유형 1 : DataList 기본 -->
-  <div class="sc-data__list">
-    <div class="data-list__group">
-      <DataList
-        v-for="(item, i) in basicItems"
-        :key="`basic-${i}`"
-        align="spaceBetween"
-      >
-        <template #title>
-          <span class="data-list__text">메인텍스트</span>
-          <Tooltip
-            placement="top-center"
-            :content="item.tooltip"
-          />
-          <small v-if="item.small">{{ item.small }}</small>
-        </template>
-        <template #content>
-          <span class="data-list__text">{{ item.content }}</span>
-        </template>
-      </DataList>
-    </div>
-  </div>
-  <!-- E : 유형 1 : DataList 기본 -->
 
-  <div class="demo-title">유형 2 : DataList - box</div>
-  <ScDataList
-    :items="grayItems"
-    :listTitle="listTitle"
-  >
-  </ScDataList>
-  <!-- S : 유형 2 : DataList - box -->
-  <!-- <div class="sc-data__list">
-    <BasicCard
-      variant="solid"
-      color="gray"
-    >
-      <div class="data-list__group">
-        <DataList
-          v-for="(item, i) in grayItems"
-          :key="`gray-${i}`"
-          align="spaceBetween"
-        >
-          <template #title>
-            <span class="data-list__text">메인텍스트</span>
-            <Tooltip
-              placement="top-center"
-              :content="item.tooltip"
-            />
-          </template>
-          <template #content>
-            <span class="data-list__text">{{ item.content }}</span>
-          </template>
-        </DataList>
-      </div>
-    </BasicCard>
-  </div> -->
-  <!-- E : 유형 2 : DataList - box -->
+  <Divider
+    variant="basic"
+    color="tertiary"
+    class="my-6"
+  />
 
-  <div class="demo-title">유형 3 : DataList - box in box</div>
-  <ScDataList
-    :items="boxInBoxItems"
-    :listTitle="listTitle"
-  >
-  </ScDataList>
-  <!-- S : 유형 3 : DataList - box in box -->
-  <!-- <div class="sc-data__list">
-    <BasicCard variant="outline">
-      <!-- 카드 상단 타이틀 
-  <h3 class="data-list__title">타이틀</h3>
+  <div class="demo-title">유형 2 : Box DataList (Gray 박스)</div>
+  <section class="section">
+    <ScDataList :items="grayItems" />
+  </section>
 
-  <!-- gray 카드(Box) 활용 
-      <BasicCard
-        variant="solid"
-        color="gray"
-      >
-        <div class="data-list__group">
-          <DataList
-            v-for="(item, i) in boxInBoxTopItems"
-            :key="`mix-top-${i}`"
-            align="spaceBetween"
-          >
-            <template #title>
-              <span class="data-list__text">메인텍스트</span>
-              <Tooltip
-                placement="top-center"
-                :content="item.tooltip"
-              />
-            </template>
-            <template #content>
-              <span class="data-list__text">{{ item.content }}</span>
-            </template>
-          </DataList>
-        </div>
-      </BasicCard>
+  <Divider
+    variant="basic"
+    color="tertiary"
+    class="my-6"
+  />
 
-      <!-- 하단 일반 그룹 (기본형) 
-      <div class="data-list__group">
-        <DataList
-          v-for="(item, i) in boxInBoxBottomItems"
-          :key="`mix-bottom-${i}`"
-          align="spaceBetween"
-        >
-          <template #title>
-            <span class="data-list__text">메인텍스트</span>
-            <Tooltip
-              placement="top-center"
-              :content="item.tooltip"
-            />
-          </template>
-          <template #content>
-            <span class="data-list__text">{{ item.content }}</span>
-          </template>
-        </DataList>
-      </div>
-
+  <div class="demo-title">유형 3 : BoxInBox DataList (박스 안에 박스)</div>
+  <section class="section">
+    <ScDataList :items="boxInBoxItems">
+      <!-- Actions 슬롯 활용 -->
       <template #actions>
         <BoxButtonGroup variant="100">
           <BoxButton
             color="secondary"
             size="medium"
-            text="텍스트"
+            text="확인"
           />
         </BoxButtonGroup>
       </template>
-    </BasicCard>
-  </div> -->
-  <!-- E : 유형 3 : DataList - box in box -->
+    </ScDataList>
+  </section>
+
+  <Divider
+    variant="basic"
+    color="tertiary"
+    class="my-6"
+  />
+
+  <div class="demo-title">고급 : 커스텀 슬롯 활용 예시</div>
+  <section class="section">
+    <ScDataList :items="customItems">
+      <!-- 첫 번째 아이템 title 커스터마이징 -->
+      <template #item-0-title="{ item }">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="background: #1e88e5; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
+            VIP
+          </span>
+          <span class="data-list__text">{{ item.title }}</span>
+        </div>
+      </template>
+
+      <!-- 두 번째 아이템 content 커스터마이징 -->
+      <template #item-1-content="{ item }">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #f44336; font-weight: bold;">{{ item.content }}</span>
+          <small style="color: #999;">(할인 적용)</small>
+        </div>
+      </template>
+    </ScDataList>
+  </section>
 </template>
 
 <script setup>
-import { DataList, Divider, Tooltip } from "@shc-nss/ui/solid";
+import {
+  BoxButton,
+  BoxButtonGroup,
+  Divider,
+} from "@shc-nss/ui/solid";
+import { ref } from "vue";
 import ScDataList from "../../_module/ScDataList.vue";
 
-import { ref } from "vue";
+// ============================================================================
+// 데이터 구조 예시
+// ============================================================================
 
-// 기본형 리스트 아이템들
-const basicItems = [
-  { title: "성명", tooltip: "설명 툴팁", content: "김신한" },
-  { title: "영문성명", tooltip: "영문 표기", content: "KIM SHIN HAN" },
-  {
-    title: "주민등록번호",
-    tooltip: "외국인 번호",
-    content: "901231-1******",
-    small: "(외국인 번호)",
-  },
-  {
-    title: "주소",
-    tooltip: "주소",
-    content: "03468 서울특별시 중구 을지 1길 10, 101동 101호(을지로 1가)",
-  },
-  { title: "연락처", tooltip: "연락처", content: "010-1234-5678" },
-];
-// 기본형 sc data list items
 const listTitle = ref("Data List Title");
+
+// 유형 0: Basic (기본 배열)
 const scBasicItems = [
   { title: "출금가능금액", content: "50,000원", tooltip: "tooltip content" },
   { title: "금리", content: "연 1.00%" },
@@ -238,7 +132,11 @@ const scBasicItems = [
     title: "자동 이체 현황",
     contentBtnText: "3건",
   },
-  { title: "", content: "", boxButtonText: "메모 입력하기" },
+  { 
+    title: "메모", 
+    content: "" 
+    // content는 슬롯으로 대체됨
+  },
   {
     title: "이용내역 삭제",
     tooltip: "tooltip",
@@ -250,7 +148,10 @@ const scBasicItems = [
       "내용이 길 경우는 줄 바꿈으로 모든 내용이 표시됩니다. 내용이 길 경우는 줄 바꿈으로 모든 내용이 표시됩니다.  내용이 길 경우는 줄 바꿈으로 모든 내용이 표시됩니다.",
   },
 ];
-// 확장형 data-list
+
+// 유형 1: Expandable (확장형)
+// ✅ defaultItems: 기본 표시 아이템
+// ✅ expandedItems: 확장 시 표시 아이템
 const expandableItems = {
   defaultItems: [
     { title: "출금가능금액", content: "50,000원", tooltip: "tooltip content" },
@@ -268,35 +169,45 @@ const expandableItems = {
   ],
 };
 
-// Gray 카드(박스) 내부 리스트
+// 유형 2: Box (Gray 단일 박스)
+// ✅ boxItems: Gray 박스 내부 아이템
 const grayItems = {
   boxItems: [
-    { title: "grayItem1", tooltip: "국가", content: "[KR] KOREA, REPUBLIC OF" },
-    { title: "grayItem2", tooltip: "거주여부", content: "거주" },
-    { title: "grayItem3", tooltip: "성별", content: "남자" },
+    { title: "국가", tooltip: "국가", content: "[KR] KOREA, REPUBLIC OF" },
+    { title: "거주여부", tooltip: "거주여부", content: "거주" },
+    { title: "성별", tooltip: "성별", content: "남자" },
   ],
 };
 
-// 혼합형 카드 상단(Gray) 리스트
+// 유형 3: BoxInBox (박스 안에 박스)
+// ✅ title: 카드 상단 타이틀 (선택)
+// ✅ topItems: 상단 Gray 박스 아이템
+// ✅ mainItems: 중간 일반 영역 아이템 (선택)
+// ✅ bottomItems: 하단 일반 영역 아이템 (선택)
 const boxInBoxItems = {
-  boxItem1: [
-    { title: "grayItem1", tooltip: "국가", content: "[KR] KOREA, REPUBLIC OF" },
-    { title: "grayItem2", tooltip: "거주여부", content: "거주" },
-    { title: "grayItem3", tooltip: "성별", content: "남자" },
+  title: "직원 정보",
+  topItems: [
+    { title: "소득 유형", tooltip: "소득 유형", content: "급여소득자" },
+    { title: "카드사", tooltip: "카드사", content: "신한카드" },
   ],
-  boxItem2: [
-    { tooltip: "소득 유형", content: "급여소득자" },
-    { tooltip: "카드사", content: "신한카드" },
+  mainItems: [
+    { title: "성명", content: "김신한" },
+    { title: "직급", content: "대리" },
+  ],
+  bottomItems: [
+    { title: "회사 주소", tooltip: "회사 주소", content: "서울특별시 중구 을지로 100" },
+    { title: "회사 연락처", tooltip: "회사 연락처", content: "02-542-1987" },
   ],
 };
 
-// 혼합형 카드 하단(기본형) 리스트
-// const boxInBoxBottomItems = [
-//   { tooltip: "회사 주소", content: "서울특별시 중구 을지로 100" },
-//   { tooltip: "회사 연락처", content: "02-542-1987" },
-// ];
+// 커스텀 슬롯 예시용
+const customItems = [
+  { title: "고객명", content: "김신한" },
+  { title: "등급", content: "VVIP" },
+  { title: "포인트", content: "10,000P" },
+];
 </script>
 
 <style lang="scss" scoped>
-@use "@assets/styles/module/_data-list" as *; // 모듈 영역 스타일
+@use "@assets/styles/module/_data-list" as *;
 </style>
