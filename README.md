@@ -18,19 +18,19 @@
         variant="solid"
         as="div"
         class="pa-0 bg-white"
-        :label="isExpanded ? (collapseLabel || '닫기') : (expandLabel || '더보기')"
+        :label="isExpanded ? collapseLabel || '닫기' : expandLabel || '더보기'"
       >
         <!-- 기본 아이템들 -->
         <template
-          v-for="(item, index) in items.listItems"
+          v-for="(item, index) in items.defaultItems"
           :key="`default-${index}`"
         >
-          <slot
+          <!-- <slot
             :name="`item-${index + 1}-prepend`"
             :item="item"
             :index="index"
-          />
-          
+          /> -->
+
           <DataList :align="item.align || 'spaceBetween'">
             <template #title>
               <span class="data-list__text">{{ item.title }}</span>
@@ -42,7 +42,7 @@
               />
               <small v-if="item.small">{{ item.small }}</small>
             </template>
-            
+
             <template #content>
               <!-- Toggle Switch -->
               <ToggleSwitch
@@ -50,14 +50,14 @@
                 v-model="item.switchValue"
                 :disabled="item.disabled"
               />
-              
+
               <!-- Content Text -->
               <span
                 v-if="item.content"
                 class="data-list__text"
                 v-html="item.content"
               />
-              
+
               <!-- Text Button -->
               <TextButton
                 v-if="item.contentBtnText"
@@ -67,7 +67,7 @@
                 :rightIcon="{ iconName: 'Chevron_right' }"
                 class="font-weight-300 spacing-none"
               />
-              
+
               <!-- Box Button -->
               <div
                 v-if="item.boxButtonText"
@@ -80,12 +80,12 @@
               </div>
             </template>
           </DataList>
-          
-          <slot
+
+          <!-- <slot
             :name="`item-${index + 1}-append`"
             :item="item"
             :index="index"
-          />
+          /> -->
         </template>
 
         <!-- 확장 영역 -->
@@ -105,20 +105,20 @@
               />
               <small v-if="expandedItem.small">{{ expandedItem.small }}</small>
             </template>
-            
+
             <template #content>
               <ToggleSwitch
                 v-if="expandedItem.showSwitch"
                 v-model="expandedItem.switchValue"
                 :disabled="expandedItem.disabled"
               />
-              
+
               <span
                 v-if="expandedItem.content"
                 class="data-list__text"
                 v-html="expandedItem.content"
               />
-              
+
               <TextButton
                 v-if="expandedItem.contentBtnText"
                 color="secondary"
@@ -132,6 +132,38 @@
         </template>
       </ExpandableCard>
     </div>
+
+    <BasicCard
+      variant="outline"
+      v-if="isBoxItem"
+    >
+      <div class="data-list__group py-0">
+        <BasicCard
+          variant="solid"
+          color="gray"
+          v-if="isBoxItem"
+        >
+          <DataList
+            v-for="(boxItem, index) in items.boxItems"
+            :key="`boxItem-${index}`"
+            align="spaceBetween"
+          >
+            <template #title>
+              {{ boxItem.title }}
+              <Tooltip
+                v-if="boxItem.tooltip"
+                placement="top-left"
+                :showClose="boxItem.tooltipShowClose !== false"
+                :content="boxItem.tooltip"
+              ></Tooltip>
+            </template>
+            <template #content>
+              {{ boxItem.content }}
+            </template>
+          </DataList>
+        </BasicCard>
+      </div>
+    </BasicCard>
 
     <!-- Basic 타입 (일반 리스트) -->
     <div
@@ -147,7 +179,7 @@
           :item="item"
           :index="index"
         />
-        
+
         <DataList :align="item.align || 'spaceBetween'">
           <template #title>
             <span class="data-list__text">{{ item.title }}</span>
@@ -159,7 +191,7 @@
             />
             <small v-if="item.small">{{ item.small }}</small>
           </template>
-          
+
           <template #content>
             <!-- Toggle Switch -->
             <ToggleSwitch
@@ -167,14 +199,14 @@
               v-model="item.switchValue"
               :disabled="item.disabled"
             />
-            
+
             <!-- Content Text -->
             <span
               v-if="item.content"
               class="data-list__text"
               v-html="item.content"
             />
-            
+
             <!-- Text Button -->
             <TextButton
               v-if="item.contentBtnText"
@@ -184,7 +216,7 @@
               :rightIcon="{ iconName: 'Chevron_right' }"
               class="font-weight-300 spacing-none"
             />
-            
+
             <!-- Box Button -->
             <div
               v-if="item.boxButtonText"
@@ -197,12 +229,12 @@
             </div>
           </template>
         </DataList>
-        
-        <slot
+
+        <!-- <slot
           :name="`item-${index + 1}-append`"
           :item="item"
           :index="index"
-        />
+        /> -->
       </template>
     </div>
   </div>
@@ -210,6 +242,7 @@
 
 <script setup>
 import {
+  BasicCard,
   BoxButton,
   DataList,
   ExpandableCard,
@@ -224,42 +257,50 @@ const props = defineProps({
   // 아이템 배열 또는 객체
   items: {
     type: [Array, Object],
-    default: () => ([])
+    default: () => [],
   },
   // 리스트 타이틀
   listTitle: {
     type: String,
-    default: ""
+    default: "",
   },
   // 확장 버튼 라벨
   expandLabel: {
     type: String,
-    default: "더보기"
+    default: "더보기",
   },
   // 축소 버튼 라벨
   collapseLabel: {
     type: String,
-    default: "닫기"
+    default: "닫기",
   },
   // 초기 확장 상태
   defaultExpanded: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 });
 
 // 확장 상태 관리
 const isExpanded = ref(props.defaultExpanded);
-
 // Expandable 타입인지 체크
 // items가 객체이고 expandedItems 속성을 가지고 있으면 Expandable
 const isExpandable = computed(() => {
-  return props.items && 
-         typeof props.items === 'object' && 
-         !Array.isArray(props.items) &&
-         props.items.expandedItems &&
-         Array.isArray(props.items.expandedItems);
+  return props.items.expandedItems && Array.isArray(props.items.expandedItems);
 });
+
+const isBoxItem = computed(() => {
+  return props.items.boxItems && Array.isArray(props.items.boxItems);
+});
+const isMultiBoxItem = computed(() => {
+  // const result = mapValues(props.items, (arr) => arr.length);
+  return props.items.boxItems && Array.isArray(props.items.boxItems);
+});
+
+const result = Object.values(props.items.boxItem1).reduce((sum, arr) => sum + arr.length, 0);
+console.log("result==>", result);
+console.log("isBoxItem::", props.items.boxItems);
+console.log("isMultiBoxItem::", isMultiBoxItem);
 
 // Expose methods
 defineExpose({
@@ -272,7 +313,7 @@ defineExpose({
   // 확장 상태 설정
   setExpanded: (value) => {
     isExpanded.value = value;
-  }
+  },
 });
 </script>
 
