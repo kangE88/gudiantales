@@ -8,7 +8,9 @@
       {{ listTitle }}
     </p>
 
-    <!-- Expandable 타입 (expandedItems가 있으면) -->
+    <!-- ========================================
+         유형 1: Expandable (확장형)
+         ======================================== -->
     <div
       v-if="isExpandable"
       class="data-list__group py-0"
@@ -25,67 +27,61 @@
           v-for="(item, index) in items.defaultItems"
           :key="`default-${index}`"
         >
-          <!-- <slot
-            :name="`item-${index + 1}-prepend`"
-            :item="item"
-            :index="index"
-          /> -->
-
           <DataList :align="item.align || 'spaceBetween'">
             <template #title>
-              <span class="data-list__text">{{ item.title }}</span>
-              <Tooltip
-                v-if="item.tooltip"
-                :placement="item.tooltipPlacement || 'top-left'"
-                :showClose="item.tooltipShowClose !== false"
-                :content="item.tooltip"
-              />
-              <small v-if="item.small">{{ item.small }}</small>
+              <!-- 커스텀 슬롯 우선, 없으면 기본 렌더링 -->
+              <slot
+                :name="`item-${index}-title`"
+                :item="item"
+                :index="index"
+              >
+                <span class="data-list__text">{{ item.title }}</span>
+                <Tooltip
+                  v-if="item.tooltip"
+                  :placement="item.tooltipPlacement || 'top-left'"
+                  :showClose="item.tooltipShowClose !== false"
+                  :content="item.tooltip"
+                />
+                <small v-if="item.small">{{ item.small }}</small>
+              </slot>
             </template>
 
             <template #content>
-              <!-- Toggle Switch -->
-              <ToggleSwitch
-                v-if="item.showSwitch"
-                v-model="item.switchValue"
-                :disabled="item.disabled"
-              />
-
-              <!-- Content Text -->
-              <span
-                v-if="item.content"
-                class="data-list__text"
-                v-html="item.content"
-              />
-
-              <!-- Text Button -->
-              <TextButton
-                v-if="item.contentBtnText"
-                color="secondary"
-                size="small"
-                :text="item.contentBtnText"
-                :rightIcon="{ iconName: 'Chevron_right' }"
-                class="font-weight-300 spacing-none"
-              />
-
-              <!-- Box Button -->
-              <div
-                v-if="item.boxButtonText"
-                class="data-list__btn-wrap"
+              <slot
+                :name="`item-${index}-content`"
+                :item="item"
+                :index="index"
               >
-                <BoxButton
-                  color="tertiary"
-                  :text="item.boxButtonText"
+                <ToggleSwitch
+                  v-if="item.showSwitch"
+                  v-model="item.switchValue"
+                  :disabled="item.disabled"
                 />
-              </div>
+                <span
+                  v-if="item.content"
+                  class="data-list__text"
+                  v-html="item.content"
+                />
+                <TextButton
+                  v-if="item.contentBtnText"
+                  color="secondary"
+                  size="small"
+                  :text="item.contentBtnText"
+                  :rightIcon="{ iconName: 'Chevron_right' }"
+                  class="font-weight-300 spacing-none"
+                />
+                <div
+                  v-if="item.boxButtonText"
+                  class="data-list__btn-wrap"
+                >
+                  <BoxButton
+                    color="tertiary"
+                    :text="item.boxButtonText"
+                  />
+                </div>
+              </slot>
             </template>
           </DataList>
-
-          <!-- <slot
-            :name="`item-${index + 1}-append`"
-            :item="item"
-            :index="index"
-          /> -->
         </template>
 
         <!-- 확장 영역 -->
@@ -96,76 +92,245 @@
             :align="expandedItem.align || 'spaceBetween'"
           >
             <template #title>
-              <span class="data-list__text">{{ expandedItem.title }}</span>
-              <Tooltip
-                v-if="expandedItem.tooltip"
-                :placement="expandedItem.tooltipPlacement || 'top-left'"
-                :showClose="expandedItem.tooltipShowClose !== false"
-                :content="expandedItem.tooltip"
-              />
-              <small v-if="expandedItem.small">{{ expandedItem.small }}</small>
+              <slot
+                :name="`expanded-${index}-title`"
+                :item="expandedItem"
+                :index="index"
+              >
+                <span class="data-list__text">{{ expandedItem.title }}</span>
+                <Tooltip
+                  v-if="expandedItem.tooltip"
+                  :placement="expandedItem.tooltipPlacement || 'top-left'"
+                  :showClose="expandedItem.tooltipShowClose !== false"
+                  :content="expandedItem.tooltip"
+                />
+                <small v-if="expandedItem.small">{{ expandedItem.small }}</small>
+              </slot>
             </template>
 
             <template #content>
-              <ToggleSwitch
-                v-if="expandedItem.showSwitch"
-                v-model="expandedItem.switchValue"
-                :disabled="expandedItem.disabled"
-              />
-
-              <span
-                v-if="expandedItem.content"
-                class="data-list__text"
-                v-html="expandedItem.content"
-              />
-
-              <TextButton
-                v-if="expandedItem.contentBtnText"
-                color="secondary"
-                size="small"
-                :text="expandedItem.contentBtnText"
-                :rightIcon="{ iconName: 'Chevron_right' }"
-                class="font-weight-300 spacing-none"
-              />
+              <slot
+                :name="`expanded-${index}-content`"
+                :item="expandedItem"
+                :index="index"
+              >
+                <ToggleSwitch
+                  v-if="expandedItem.showSwitch"
+                  v-model="expandedItem.switchValue"
+                  :disabled="expandedItem.disabled"
+                />
+                <span
+                  v-if="expandedItem.content"
+                  class="data-list__text"
+                  v-html="expandedItem.content"
+                />
+                <TextButton
+                  v-if="expandedItem.contentBtnText"
+                  color="secondary"
+                  size="small"
+                  :text="expandedItem.contentBtnText"
+                  :rightIcon="{ iconName: 'Chevron_right' }"
+                  class="font-weight-300 spacing-none"
+                />
+              </slot>
             </template>
           </DataList>
         </template>
       </ExpandableCard>
     </div>
 
+    <!-- ========================================
+         유형 2: Box (Gray 단일 박스)
+         ======================================== -->
     <BasicCard
-      variant="outline"
-      v-if="isBoxItem"
+      v-else-if="isBox"
+      variant="solid"
+      color="gray"
     >
-      <div class="data-list__group py-0">
-        <BasicCard
-          variant="solid"
-          color="gray"
-          v-if="isBoxItem"
+      <div class="data-list__group">
+        <DataList
+          v-for="(boxItem, index) in items.boxItems"
+          :key="`box-${index}`"
+          :align="boxItem.align || 'spaceBetween'"
         >
-          <DataList
-            v-for="(boxItem, index) in items.boxItems"
-            :key="`boxItem-${index}`"
-            align="spaceBetween"
-          >
-            <template #title>
-              {{ boxItem.title }}
+          <template #title>
+            <slot
+              :name="`box-${index}-title`"
+              :item="boxItem"
+              :index="index"
+            >
+              <span class="data-list__text">{{ boxItem.title }}</span>
               <Tooltip
                 v-if="boxItem.tooltip"
-                placement="top-left"
+                :placement="boxItem.tooltipPlacement || 'top-left'"
                 :showClose="boxItem.tooltipShowClose !== false"
                 :content="boxItem.tooltip"
-              ></Tooltip>
-            </template>
-            <template #content>
-              {{ boxItem.content }}
-            </template>
-          </DataList>
-        </BasicCard>
+              />
+            </slot>
+          </template>
+          <template #content>
+            <slot
+              :name="`box-${index}-content`"
+              :item="boxItem"
+              :index="index"
+            >
+              <span
+                v-if="boxItem.content"
+                class="data-list__text"
+              >{{ boxItem.content }}</span>
+            </slot>
+          </template>
+        </DataList>
       </div>
     </BasicCard>
 
-    <!-- Basic 타입 (일반 리스트) -->
+    <!-- ========================================
+         유형 3: BoxInBox (외부 카드 + 내부 Gray 카드)
+         ======================================== -->
+    <BasicCard
+      v-else-if="isBoxInBox"
+      variant="outline"
+    >
+      <!-- 상단 타이틀 -->
+      <h3
+        v-if="items.title"
+        class="data-list__title"
+      >
+        {{ items.title }}
+      </h3>
+
+      <!-- Top Items (Gray 카드) -->
+      <BasicCard
+        v-if="items.topItems && items.topItems.length"
+        variant="solid"
+        color="gray"
+      >
+        <div class="data-list__group">
+          <DataList
+            v-for="(topItem, index) in items.topItems"
+            :key="`top-${index}`"
+            :align="topItem.align || 'spaceBetween'"
+          >
+            <template #title>
+              <slot
+                :name="`top-${index}-title`"
+                :item="topItem"
+                :index="index"
+              >
+                <span class="data-list__text">{{ topItem.title }}</span>
+                <Tooltip
+                  v-if="topItem.tooltip"
+                  :placement="topItem.tooltipPlacement || 'top-left'"
+                  :showClose="topItem.tooltipShowClose !== false"
+                  :content="topItem.tooltip"
+                />
+              </slot>
+            </template>
+            <template #content>
+              <slot
+                :name="`top-${index}-content`"
+                :item="topItem"
+                :index="index"
+              >
+                <span
+                  v-if="topItem.content"
+                  class="data-list__text"
+                >{{ topItem.content }}</span>
+              </slot>
+            </template>
+          </DataList>
+        </div>
+      </BasicCard>
+
+      <!-- Main Items (중간 일반 영역) -->
+      <div
+        v-if="items.mainItems && items.mainItems.length"
+        class="data-list__group"
+      >
+        <DataList
+          v-for="(mainItem, index) in items.mainItems"
+          :key="`main-${index}`"
+          :align="mainItem.align || 'spaceBetween'"
+        >
+          <template #title>
+            <slot
+              :name="`main-${index}-title`"
+              :item="mainItem"
+              :index="index"
+            >
+              <span class="data-list__text">{{ mainItem.title }}</span>
+              <Tooltip
+                v-if="mainItem.tooltip"
+                :placement="mainItem.tooltipPlacement || 'top-left'"
+                :showClose="mainItem.tooltipShowClose !== false"
+                :content="mainItem.tooltip"
+              />
+            </slot>
+          </template>
+          <template #content>
+            <slot
+              :name="`main-${index}-content`"
+              :item="mainItem"
+              :index="index"
+            >
+              <span
+                v-if="mainItem.content"
+                class="data-list__text"
+              >{{ mainItem.content }}</span>
+            </slot>
+          </template>
+        </DataList>
+      </div>
+
+      <!-- Bottom Items (하단 일반 영역) -->
+      <div
+        v-if="items.bottomItems && items.bottomItems.length"
+        class="data-list__group"
+      >
+        <DataList
+          v-for="(bottomItem, index) in items.bottomItems"
+          :key="`bottom-${index}`"
+          :align="bottomItem.align || 'spaceBetween'"
+        >
+          <template #title>
+            <slot
+              :name="`bottom-${index}-title`"
+              :item="bottomItem"
+              :index="index"
+            >
+              <span class="data-list__text">{{ bottomItem.title }}</span>
+              <Tooltip
+                v-if="bottomItem.tooltip"
+                :placement="bottomItem.tooltipPlacement || 'top-left'"
+                :showClose="bottomItem.tooltipShowClose !== false"
+                :content="bottomItem.tooltip"
+              />
+            </slot>
+          </template>
+          <template #content>
+            <slot
+              :name="`bottom-${index}-content`"
+              :item="bottomItem"
+              :index="index"
+            >
+              <span
+                v-if="bottomItem.content"
+                class="data-list__text"
+              >{{ bottomItem.content }}</span>
+            </slot>
+          </template>
+        </DataList>
+      </div>
+
+      <!-- Actions 슬롯 -->
+      <template #actions>
+        <slot name="actions" />
+      </template>
+    </BasicCard>
+
+    <!-- ========================================
+         유형 0: Basic (기본 배열)
+         ======================================== -->
     <div
       v-else
       class="data-list__group py-0"
@@ -175,66 +340,71 @@
         :key="`basic-${index}`"
       >
         <slot
-          :name="`item-${index + 1}-prepend`"
+          :name="`item-${index}-prepend`"
           :item="item"
           :index="index"
         />
 
         <DataList :align="item.align || 'spaceBetween'">
           <template #title>
-            <span class="data-list__text">{{ item.title }}</span>
-            <Tooltip
-              v-if="item.tooltip"
-              :placement="item.tooltipPlacement || 'top-left'"
-              :showClose="item.tooltipShowClose !== false"
-              :content="item.tooltip"
-            />
-            <small v-if="item.small">{{ item.small }}</small>
+            <slot
+              :name="`item-${index}-title`"
+              :item="item"
+              :index="index"
+            >
+              <span class="data-list__text">{{ item.title }}</span>
+              <Tooltip
+                v-if="item.tooltip"
+                :placement="item.tooltipPlacement || 'top-left'"
+                :showClose="item.tooltipShowClose !== false"
+                :content="item.tooltip"
+              />
+              <small v-if="item.small">{{ item.small }}</small>
+            </slot>
           </template>
 
           <template #content>
-            <!-- Toggle Switch -->
-            <ToggleSwitch
-              v-if="item.showSwitch"
-              v-model="item.switchValue"
-              :disabled="item.disabled"
-            />
-
-            <!-- Content Text -->
-            <span
-              v-if="item.content"
-              class="data-list__text"
-              v-html="item.content"
-            />
-
-            <!-- Text Button -->
-            <TextButton
-              v-if="item.contentBtnText"
-              color="secondary"
-              size="small"
-              :text="item.contentBtnText"
-              :rightIcon="{ iconName: 'Chevron_right' }"
-              class="font-weight-300 spacing-none"
-            />
-
-            <!-- Box Button -->
-            <div
-              v-if="item.boxButtonText"
-              class="data-list__btn-wrap"
+            <slot
+              :name="`item-${index}-content`"
+              :item="item"
+              :index="index"
             >
-              <BoxButton
-                color="tertiary"
-                :text="item.boxButtonText"
+              <ToggleSwitch
+                v-if="item.showSwitch"
+                v-model="item.switchValue"
+                :disabled="item.disabled"
               />
-            </div>
+              <span
+                v-if="item.content"
+                class="data-list__text"
+                v-html="item.content"
+              />
+              <TextButton
+                v-if="item.contentBtnText"
+                color="secondary"
+                size="small"
+                :text="item.contentBtnText"
+                :rightIcon="{ iconName: 'Chevron_right' }"
+                class="font-weight-300 spacing-none"
+              />
+              <div
+                v-if="item.boxButtonText"
+                class="data-list__btn-wrap"
+              >
+                <BoxButton
+                  color="tertiary"
+                  :text="item.boxButtonText"
+                />
+              </div>
+            </slot>
           </template>
         </DataList>
 
-        <!-- <slot
-          :name="`item-${index + 1}-append`"
+        <slot
+          :name="`item-${index}-append`"
           :item="item"
           :index="index"
-        /> -->
+        />
       </template>
     </div>
   </div>
@@ -283,24 +453,54 @@ const props = defineProps({
 
 // 확장 상태 관리
 const isExpanded = ref(props.defaultExpanded);
-// Expandable 타입인지 체크
-// items가 객체이고 expandedItems 속성을 가지고 있으면 Expandable
+
+// ========================================
+// 유형 자동 감지
+// ========================================
+
+// 유형 1: Expandable (확장형)
+// expandedItems 속성이 있으면 활성화
 const isExpandable = computed(() => {
-  return props.items.expandedItems && Array.isArray(props.items.expandedItems);
+  return (
+    typeof props.items === "object" &&
+    !Array.isArray(props.items) &&
+    props.items.expandedItems &&
+    Array.isArray(props.items.expandedItems)
+  );
 });
 
-const isBoxItem = computed(() => {
-  return props.items.boxItems && Array.isArray(props.items.boxItems);
-});
-const isMultiBoxItem = computed(() => {
-  // const result = mapValues(props.items, (arr) => arr.length);
-  return props.items.boxItems && Array.isArray(props.items.boxItems);
+// 유형 2: Box (단일 Gray 박스)
+// boxItems 속성이 있으면 활성화
+const isBox = computed(() => {
+  return (
+    typeof props.items === "object" &&
+    !Array.isArray(props.items) &&
+    props.items.boxItems &&
+    Array.isArray(props.items.boxItems) &&
+    !props.items.topItems &&
+    !props.items.bottomItems
+  );
 });
 
-const result = Object.values(props.items.boxItem1).reduce((sum, arr) => sum + arr.length, 0);
-console.log("result==>", result);
-console.log("isBoxItem::", props.items.boxItems);
-console.log("isMultiBoxItem::", isMultiBoxItem);
+// 유형 3: BoxInBox (박스 안에 박스)
+// topItems 또는 bottomItems가 있으면 활성화
+const isBoxInBox = computed(() => {
+  return (
+    typeof props.items === "object" &&
+    !Array.isArray(props.items) &&
+    (props.items.topItems || props.items.bottomItems || props.items.mainItems)
+  );
+});
+
+// 디버그 로그
+if (import.meta.env.DEV) {
+  console.log("ScDataList 유형 감지:", {
+    isExpandable: isExpandable.value,
+    isBox: isBox.value,
+    isBoxInBox: isBoxInBox.value,
+    items: props.items,
+  });
+}
 
 // Expose methods
 defineExpose({
@@ -313,6 +513,13 @@ defineExpose({
   // 확장 상태 설정
   setExpanded: (value) => {
     isExpanded.value = value;
+  },
+  // 유형 정보 가져오기
+  getType: () => {
+    if (isExpandable.value) return "expandable";
+    if (isBoxInBox.value) return "boxInBox";
+    if (isBox.value) return "box";
+    return "basic";
   },
 });
 </script>
