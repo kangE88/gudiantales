@@ -1,531 +1,213 @@
+<route lang="yaml">
+meta:
+  title: TabScrollmove
+  description: SHC UI 테이블 컴포넌트입니다.
+  author: dkang
+  category: Data
+</route>
 <template>
-  <div class="sc-data__list">
-    <!-- 타이틀 -->
-    <p
-      v-if="listTitle"
-      class="data-list__title"
-    >
-      {{ listTitle }}
-    </p>
+  <h1 class="sr-only">상단 네비게이션 타이틀 또는 본문 타이틀</h1>
 
-    <!-- ========================================
-         유형 1: Expandable (확장형)
-         ======================================== -->
-    <div
-      v-if="isExpandable"
-      class="data-list__group py-0"
-    >
-      <ExpandableCard
-        v-model:expanded="isExpanded"
-        variant="solid"
-        as="div"
-        class="pa-0 bg-white"
-        :label="isExpanded ? collapseLabel || '닫기' : expandLabel || '더보기'"
-      >
-        <!-- 기본 아이템들 -->
-        <template
-          v-for="(item, index) in items.defaultItems"
-          :key="`default-${index}`"
+  <!-- 콘텐츠 영역 -->
+  <div class="sv-contents__body">
+    <div class="c-tabs__group is-sticky">
+      <Tabs
+        v-model="activeTab"
+        @update:model-value="handleTabChange"
+        :items="[{ label: '텍스트' }, { label: '텍스트' }]"
+      />
+
+      <Tabs v-model="TabsLineActive">
+        <Tab
+          v-for="(t, index) in TabsLine"
+          :key="index"
+          :label="t.label"
         >
-          <DataList :align="item.align || 'spaceBetween'">
-            <template #title>
-              <!-- 커스텀 슬롯 우선, 없으면 기본 렌더링 -->
-              <slot
-                :name="`item-${index}-title`"
-                :item="item"
-                :index="index"
-              >
-                <span class="data-list__text">{{ item.title }}</span>
-                <Tooltip
-                  v-if="item.tooltip"
-                  :placement="item.tooltipPlacement || 'top-left'"
-                  :showClose="item.tooltipShowClose !== false"
-                  :content="item.tooltip"
-                />
-                <small v-if="item.small">{{ item.small }}</small>
-              </slot>
-            </template>
+          {{ t.label }}
+        </Tab>
+      </Tabs>
 
-            <template #content>
-              <slot
-                :name="`item-${index}-content`"
-                :item="item"
-                :index="index"
-              >
-                <ToggleSwitch
-                  v-if="item.showSwitch"
-                  v-model="item.switchValue"
-                  :disabled="item.disabled"
-                />
-                <span
-                  v-if="item.content"
-                  class="data-list__text"
-                  v-html="item.content"
-                />
-                <TextButton
-                  v-if="item.contentBtnText"
-                  color="secondary"
-                  size="small"
-                  :text="item.contentBtnText"
-                  :rightIcon="{ iconName: 'Chevron_right' }"
-                  class="font-weight-300 spacing-none"
-                />
-                <div
-                  v-if="item.boxButtonText"
-                  class="data-list__btn-wrap"
-                >
-                  <BoxButton
-                    color="tertiary"
-                    :text="item.boxButtonText"
-                  />
-                </div>
-              </slot>
-            </template>
-          </DataList>
-        </template>
-
-        <!-- 확장 영역 -->
-        <template #expand>
-          <DataList
-            v-for="(expandedItem, index) in items.expandedItems"
-            :key="`expanded-${index}`"
-            :align="expandedItem.align || 'spaceBetween'"
-          >
-            <template #title>
-              <slot
-                :name="`expanded-${index}-title`"
-                :item="expandedItem"
-                :index="index"
-              >
-                <span class="data-list__text">{{ expandedItem.title }}</span>
-                <Tooltip
-                  v-if="expandedItem.tooltip"
-                  :placement="expandedItem.tooltipPlacement || 'top-left'"
-                  :showClose="expandedItem.tooltipShowClose !== false"
-                  :content="expandedItem.tooltip"
-                />
-                <small v-if="expandedItem.small">{{ expandedItem.small }}</small>
-              </slot>
-            </template>
-
-            <template #content>
-              <slot
-                :name="`expanded-${index}-content`"
-                :item="expandedItem"
-                :index="index"
-              >
-                <ToggleSwitch
-                  v-if="expandedItem.showSwitch"
-                  v-model="expandedItem.switchValue"
-                  :disabled="expandedItem.disabled"
-                />
-                <span
-                  v-if="expandedItem.content"
-                  class="data-list__text"
-                  v-html="expandedItem.content"
-                />
-                <TextButton
-                  v-if="expandedItem.contentBtnText"
-                  color="secondary"
-                  size="small"
-                  :text="expandedItem.contentBtnText"
-                  :rightIcon="{ iconName: 'Chevron_right' }"
-                  class="font-weight-300 spacing-none"
-                />
-              </slot>
-            </template>
-          </DataList>
-        </template>
-      </ExpandableCard>
+      <Tabs
+        v-model="TabsSecondaryActive"
+        type="secondary"
+      >
+        <Tab
+          v-for="(p, index) in TabsSecondary"
+          :key="index"
+          :label="p.label"
+          :iconName="p.iconName"
+          :disabled="p.disabled"
+          :dot="p.dot"
+        >
+          {{ p.label }}
+        </Tab>
+      </Tabs>
     </div>
 
-    <!-- ========================================
-         유형 2: Box (Gray 단일 박스)
-         ======================================== -->
-    <BasicCard
-      v-else-if="isBox"
-      variant="solid"
-      color="gray"
-    >
-      <div class="data-list__group">
-        <DataList
-          v-for="(boxItem, index) in items.boxItems"
-          :key="`box-${index}`"
-          :align="boxItem.align || 'spaceBetween'"
-        >
-          <template #title>
-            <slot
-              :name="`box-${index}-title`"
-              :item="boxItem"
-              :index="index"
-            >
-              <span class="data-list__text">{{ boxItem.title }}</span>
-              <Tooltip
-                v-if="boxItem.tooltip"
-                :placement="boxItem.tooltipPlacement || 'top-left'"
-                :showClose="boxItem.tooltipShowClose !== false"
-                :content="boxItem.tooltip"
-              />
-            </slot>
-          </template>
-          <template #content>
-            <slot
-              :name="`box-${index}-content`"
-              :item="boxItem"
-              :index="index"
-            >
-              <span
-                v-if="boxItem.content"
-                class="data-list__text"
-              >{{ boxItem.content }}</span>
-            </slot>
-          </template>
-        </DataList>
-      </div>
-    </BasicCard>
-
-    <!-- ========================================
-         유형 3: BoxInBox (외부 카드 + 내부 Gray 카드)
-         ======================================== -->
-    <BasicCard
-      v-else-if="isBoxInBox"
-      variant="outline"
-    >
-      <!-- 상단 타이틀 -->
-      <h3
-        v-if="items.title"
-        class="data-list__title"
+    <!-- 콘텐츠 빈 영역 표시(디자인 스타일) -->
+    <section class="section">
+      <div
+        ref="contentRef"
+        class="c-empty__area swipeable-content"
+        style="height: 1000px"
       >
-        {{ items.title }}
-      </h3>
-
-      <!-- Top Items (Gray 카드) -->
-      <BasicCard
-        v-if="items.topItems && items.topItems.length"
-        variant="solid"
-        color="gray"
-      >
-        <div class="data-list__group">
-          <DataList
-            v-for="(topItem, index) in items.topItems"
-            :key="`top-${index}`"
-            :align="topItem.align || 'spaceBetween'"
-          >
-            <template #title>
-              <slot
-                :name="`top-${index}-title`"
-                :item="topItem"
-                :index="index"
-              >
-                <span class="data-list__text">{{ topItem.title }}</span>
-                <Tooltip
-                  v-if="topItem.tooltip"
-                  :placement="topItem.tooltipPlacement || 'top-left'"
-                  :showClose="topItem.tooltipShowClose !== false"
-                  :content="topItem.tooltip"
-                />
-              </slot>
-            </template>
-            <template #content>
-              <slot
-                :name="`top-${index}-content`"
-                :item="topItem"
-                :index="index"
-              >
-                <span
-                  v-if="topItem.content"
-                  class="data-list__text"
-                >{{ topItem.content }}</span>
-              </slot>
-            </template>
-          </DataList>
+        <div class="content-display">
+          <h2>Line Tabs 현재 활성: {{ TabsLineActive + 1 }} / {{ TabsLine.length }}</h2>
+          <p class="swipe-hint">👈 좌우로 스와이프하여 탭을 이동할 수 있습니다 👉</p>
+          <div class="tab-info">
+            <p><strong>스와이프 제어 대상:</strong> Line Tabs (두 번째 탭 그룹)</p>
+            <p>현재 항목: {{ TabsLine[TabsLineActive]?.label }}</p>
+            <hr style="margin: 12px 0; border: none; border-top: 1px solid #dee2e6" />
+            <p>첫 번째 Tabs (activeTab): {{ activeTab }}</p>
+            <p>Line Tabs (TabsLineActive): {{ TabsLineActive }}</p>
+            <p>Secondary Tabs (TabsSecondaryActive): {{ TabsSecondaryActive }}</p>
+          </div>
         </div>
-      </BasicCard>
-
-      <!-- Main Items (중간 일반 영역) -->
-      <div
-        v-if="items.mainItems && items.mainItems.length"
-        class="data-list__group"
-      >
-        <DataList
-          v-for="(mainItem, index) in items.mainItems"
-          :key="`main-${index}`"
-          :align="mainItem.align || 'spaceBetween'"
-        >
-          <template #title>
-            <slot
-              :name="`main-${index}-title`"
-              :item="mainItem"
-              :index="index"
-            >
-              <span class="data-list__text">{{ mainItem.title }}</span>
-              <Tooltip
-                v-if="mainItem.tooltip"
-                :placement="mainItem.tooltipPlacement || 'top-left'"
-                :showClose="mainItem.tooltipShowClose !== false"
-                :content="mainItem.tooltip"
-              />
-            </slot>
-          </template>
-          <template #content>
-            <slot
-              :name="`main-${index}-content`"
-              :item="mainItem"
-              :index="index"
-            >
-              <span
-                v-if="mainItem.content"
-                class="data-list__text"
-              >{{ mainItem.content }}</span>
-            </slot>
-          </template>
-        </DataList>
       </div>
-
-      <!-- Bottom Items (하단 일반 영역) -->
-      <div
-        v-if="items.bottomItems && items.bottomItems.length"
-        class="data-list__group"
-      >
-        <DataList
-          v-for="(bottomItem, index) in items.bottomItems"
-          :key="`bottom-${index}`"
-          :align="bottomItem.align || 'spaceBetween'"
-        >
-          <template #title>
-            <slot
-              :name="`bottom-${index}-title`"
-              :item="bottomItem"
-              :index="index"
-            >
-              <span class="data-list__text">{{ bottomItem.title }}</span>
-              <Tooltip
-                v-if="bottomItem.tooltip"
-                :placement="bottomItem.tooltipPlacement || 'top-left'"
-                :showClose="bottomItem.tooltipShowClose !== false"
-                :content="bottomItem.tooltip"
-              />
-            </slot>
-          </template>
-          <template #content>
-            <slot
-              :name="`bottom-${index}-content`"
-              :item="bottomItem"
-              :index="index"
-            >
-              <span
-                v-if="bottomItem.content"
-                class="data-list__text"
-              >{{ bottomItem.content }}</span>
-            </slot>
-          </template>
-        </DataList>
-      </div>
-
-      <!-- Actions 슬롯 -->
-      <template #actions>
-        <slot name="actions" />
-      </template>
-    </BasicCard>
-
-    <!-- ========================================
-         유형 0: Basic (기본 배열)
-         ======================================== -->
-    <div
-      v-else
-      class="data-list__group py-0"
-    >
-      <template
-        v-for="(item, index) in items"
-        :key="`basic-${index}`"
-      >
-        <slot
-          :name="`item-${index}-prepend`"
-          :item="item"
-          :index="index"
-        />
-
-        <DataList :align="item.align || 'spaceBetween'">
-          <template #title>
-            <slot
-              :name="`item-${index}-title`"
-              :item="item"
-              :index="index"
-            >
-              <span class="data-list__text">{{ item.title }}</span>
-              <Tooltip
-                v-if="item.tooltip"
-                :placement="item.tooltipPlacement || 'top-left'"
-                :showClose="item.tooltipShowClose !== false"
-                :content="item.tooltip"
-              />
-              <small v-if="item.small">{{ item.small }}</small>
-            </slot>
-          </template>
-
-          <template #content>
-            <slot
-              :name="`item-${index}-content`"
-              :item="item"
-              :index="index"
-            >
-              <ToggleSwitch
-                v-if="item.showSwitch"
-                v-model="item.switchValue"
-                :disabled="item.disabled"
-              />
-              <span
-                v-if="item.content"
-                class="data-list__text"
-                v-html="item.content"
-              />
-              <TextButton
-                v-if="item.contentBtnText"
-                color="secondary"
-                size="small"
-                :text="item.contentBtnText"
-                :rightIcon="{ iconName: 'Chevron_right' }"
-                class="font-weight-300 spacing-none"
-              />
-              <div
-                v-if="item.boxButtonText"
-                class="data-list__btn-wrap"
-              >
-                <BoxButton
-                  color="tertiary"
-                  :text="item.boxButtonText"
-                />
-              </div>
-            </slot>
-          </template>
-        </DataList>
-
-        <slot
-          :name="`item-${index}-append`"
-          :item="item"
-          :index="index"
-        />
-      </template>
-    </div>
+    </section>
   </div>
+
+  <!-- <BottomActionContainer :scrollDim="true">
+      <BoxButtonGroup size="xlarge" variant="100">
+        <BoxButton text="텍스트" />
+      </BoxButtonGroup>
+    </BottomActionContainer> -->
 </template>
 
-<script setup>
-import {
-  BasicCard,
-  BoxButton,
-  DataList,
-  ExpandableCard,
-  TextButton,
-  ToggleSwitch,
-  Tooltip,
-} from "@shc-nss/ui/solid";
-import { computed, ref } from "vue";
+<script setup lang="ts">
+import { Tab, Tabs } from "@/components/Tabs";
+import { usePointerSwipe } from "@vueuse/core";
+import { ref } from "vue";
 
-// Props 정의
-const props = defineProps({
-  // 아이템 배열 또는 객체
-  items: {
-    type: [Array, Object],
-    default: () => [],
+// 첫 번째 Tabs
+const activeTab = ref(0);
+const handleTabChange = (newValue: number | string) => {
+  console.log("Tab changed to:", newValue);
+  activeTab.value = typeof newValue === "number" ? newValue : parseInt(String(newValue), 10);
+};
+
+// Line Tabs (두 번째 Tabs)
+const TabsLineActive = ref(0);
+const TabsLine = [
+  { label: "항목1" },
+  { label: "항목2" },
+  { label: "항목3" },
+  { label: "항목4" },
+  { label: "항목5" },
+  { label: "항목6" },
+  { label: "항목7" },
+  { label: "항목8" },
+  { label: "항목9" },
+  { label: "항목10" },
+];
+
+// Secondary Tabs (세 번째 Tabs)
+const TabsSecondaryActive = ref(0);
+const TabsSecondary = [
+  { label: "항목1" },
+  { label: "항목2" },
+  { label: "항목3" },
+  { label: "항목4" },
+  { label: "항목5" },
+  { label: "항목6" },
+  { label: "항목7" },
+  { label: "항목8", iconName: "sample-icon" },
+  { label: "항목9", dot: true },
+  { label: "항목10", disabled: true },
+];
+
+// 콘텐츠 영역에 스와이프 기능 추가 (마우스 + 터치 지원)
+const contentRef = ref<HTMLElement>();
+
+// usePointerSwipe는 마우스 드래그와 터치 스와이프를 모두 지원합니다
+usePointerSwipe(contentRef, {
+  threshold: 50, // 최소 50px 이동해야 스와이프로 인식
+  onSwipeEnd(_e: PointerEvent, direction: "left" | "right" | "up" | "down" | "none") {
+    console.log("Swipe detected:", direction);
+
+    if (direction === "left") {
+      // 왼쪽으로 스와이프 -> 다음 탭으로 이동
+      navigateToNextTab();
+    } else if (direction === "right") {
+      // 오른쪽으로 스와이프 -> 이전 탭으로 이동
+      navigateToPrevTab();
+    }
   },
-  // 리스트 타이틀
-  listTitle: {
-    type: String,
-    default: "",
-  },
-  // 확장 버튼 라벨
-  expandLabel: {
-    type: String,
-    default: "더보기",
-  },
-  // 축소 버튼 라벨
-  collapseLabel: {
-    type: String,
-    default: "닫기",
-  },
-  // 초기 확장 상태
-  defaultExpanded: {
-    type: Boolean,
-    default: false,
-  },
-});
-
-// 확장 상태 관리
-const isExpanded = ref(props.defaultExpanded);
-
-// ========================================
-// 유형 자동 감지
-// ========================================
-
-// 유형 1: Expandable (확장형)
-// expandedItems 속성이 있으면 활성화
-const isExpandable = computed(() => {
-  return (
-    typeof props.items === "object" &&
-    !Array.isArray(props.items) &&
-    props.items.expandedItems &&
-    Array.isArray(props.items.expandedItems)
-  );
-});
-
-// 유형 2: Box (단일 Gray 박스)
-// boxItems 속성이 있으면 활성화
-const isBox = computed(() => {
-  return (
-    typeof props.items === "object" &&
-    !Array.isArray(props.items) &&
-    props.items.boxItems &&
-    Array.isArray(props.items.boxItems) &&
-    !props.items.topItems &&
-    !props.items.bottomItems
-  );
-});
-
-// 유형 3: BoxInBox (박스 안에 박스)
-// topItems 또는 bottomItems가 있으면 활성화
-const isBoxInBox = computed(() => {
-  return (
-    typeof props.items === "object" &&
-    !Array.isArray(props.items) &&
-    (props.items.topItems || props.items.bottomItems || props.items.mainItems)
-  );
-});
-
-// 디버그 로그
-if (import.meta.env.DEV) {
-  console.log("ScDataList 유형 감지:", {
-    isExpandable: isExpandable.value,
-    isBox: isBox.value,
-    isBoxInBox: isBoxInBox.value,
-    items: props.items,
-  });
-}
-
-// Expose methods
-defineExpose({
-  // 확장/축소 토글
-  toggle: () => {
-    isExpanded.value = !isExpanded.value;
-  },
-  // 확장 상태 가져오기
-  getExpanded: () => isExpanded.value,
-  // 확장 상태 설정
-  setExpanded: (value) => {
-    isExpanded.value = value;
-  },
-  // 유형 정보 가져오기
-  getType: () => {
-    if (isExpandable.value) return "expandable";
-    if (isBoxInBox.value) return "boxInBox";
-    if (isBox.value) return "box";
-    return "basic";
+  onSwipe(_e: PointerEvent) {
+    // 스와이프 중 시각적 피드백 (필요시 활용)
   },
 });
+
+const navigateToNextTab = () => {
+  // Line Tabs (10개 항목)의 다음 탭으로 이동
+  if (TabsLineActive.value < TabsLine.length - 1) {
+    TabsLineActive.value += 1;
+    console.log("Next tab:", TabsLineActive.value);
+  }
+};
+
+const navigateToPrevTab = () => {
+  // Line Tabs (10개 항목)의 이전 탭으로 이동
+  if (TabsLineActive.value > 0) {
+    TabsLineActive.value -= 1;
+    console.log("Previous tab:", TabsLineActive.value);
+  }
+};
 </script>
 
-<style scoped lang="scss">
-.sc-data__list {
-  width: 100%;
+<style lang="scss" scoped>
+.swipeable-content {
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y; // 세로 스크롤은 허용하면서 좌우 스와이프 감지
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  .content-display {
+    text-align: center;
+    padding: 40px;
+
+    h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #212529;
+    }
+
+    .swipe-hint {
+      display: inline-block;
+      padding: 16px 24px;
+      background-color: #e7f3ff;
+      border-radius: 8px;
+      font-size: 16px;
+      color: #0066cc;
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+
+    .tab-info {
+      margin-top: 32px;
+      padding: 24px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      text-align: left;
+
+      p {
+        font-size: 14px;
+        line-height: 1.8;
+        color: #495057;
+        margin-bottom: 8px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
 }
 </style>
