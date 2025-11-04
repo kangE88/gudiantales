@@ -1,213 +1,280 @@
-<route lang="yaml">
-meta:
-  title: TabScrollmove
-  description: SHC UI 테이블 컴포넌트입니다.
-  author: dkang
-  category: Data
-</route>
 <template>
-  <h1 class="sr-only">상단 네비게이션 타이틀 또는 본문 타이틀</h1>
-
-  <!-- 콘텐츠 영역 -->
-  <div class="sv-contents__body">
-    <div class="c-tabs__group is-sticky">
-      <Tabs
-        v-model="activeTab"
-        @update:model-value="handleTabChange"
-        :items="[{ label: '텍스트' }, { label: '텍스트' }]"
-      />
-
-      <Tabs v-model="TabsLineActive">
-        <Tab
-          v-for="(t, index) in TabsLine"
-          :key="index"
-          :label="t.label"
-        >
-          {{ t.label }}
-        </Tab>
-      </Tabs>
-
-      <Tabs
-        v-model="TabsSecondaryActive"
-        type="secondary"
-      >
-        <Tab
-          v-for="(p, index) in TabsSecondary"
-          :key="index"
-          :label="p.label"
-          :iconName="p.iconName"
-          :disabled="p.disabled"
-          :dot="p.dot"
-        >
-          {{ p.label }}
-        </Tab>
-      </Tabs>
+  <div :class="['sc-virtual__keypad', { 'sc-virtual__keypad--dark': isDarkTheme }]">
+    <!-- 접근성 메시지 박스 -->
+    <div
+      ref="messageBox"
+      class="sc-keypad__message"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {{ message }}
     </div>
 
-    <!-- 콘텐츠 빈 영역 표시(디자인 스타일) -->
-    <section class="section">
-      <div
-        ref="contentRef"
-        class="c-empty__area swipeable-content"
-        style="height: 1000px"
-      >
-        <div class="content-display">
-          <h2>Line Tabs 현재 활성: {{ TabsLineActive + 1 }} / {{ TabsLine.length }}</h2>
-          <p class="swipe-hint">👈 좌우로 스와이프하여 탭을 이동할 수 있습니다 👉</p>
-          <div class="tab-info">
-            <p><strong>스와이프 제어 대상:</strong> Line Tabs (두 번째 탭 그룹)</p>
-            <p>현재 항목: {{ TabsLine[TabsLineActive]?.label }}</p>
-            <hr style="margin: 12px 0; border: none; border-top: 1px solid #dee2e6" />
-            <p>첫 번째 Tabs (activeTab): {{ activeTab }}</p>
-            <p>Line Tabs (TabsLineActive): {{ TabsLineActive }}</p>
-            <p>Secondary Tabs (TabsSecondaryActive): {{ TabsSecondaryActive }}</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
+    <div class="sc-keypad__keys">
+      <!-- 동적으로 렌더링되는 숫자 버튼들 (1~9) -->
+      <Button
+        v-for="number in numbers.slice(0, 9)"
+        :key="number"
+        :label="number"
+        :aria-label="`숫자 ${number} 입력`"
+        class="keypad-btn keypad-btn--number"
+        @click="handleNumberClick(number)"
+      />
 
-  <!-- <BottomActionContainer :scrollDim="true">
-      <BoxButtonGroup size="xlarge" variant="100">
-        <BoxButton text="텍스트" />
-      </BoxButtonGroup>
-    </BottomActionContainer> -->
+      <!-- 00 또는 재배열 버튼 -->
+      <Button
+        v-if="!showRearrange"
+        label="00"
+        aria-label="숫자 00 입력"
+        class="keypad-btn keypad-btn--number"
+        @click="handleNumberClick('00')"
+      />
+      <Button
+        v-else
+        label="재배열"
+        aria-label="숫자 재배열"
+        class="keypad-btn keypad-btn--rearrange"
+        @click="handleRearrangeClick"
+      />
+
+      <!-- 0 버튼 -->
+      <Button
+        label="0"
+        :aria-label="`숫자 0 입력`"
+        class="keypad-btn keypad-btn--number"
+        @click="handleNumberClick('0')"
+      />
+
+      <!-- 삭제 버튼 -->
+      <IconButton
+        iconName="delete"
+        size="large"
+        aria-label="삭제"
+        class="keypad-btn keypad-btn--delete"
+        @click="handleDeleteClick"
+      />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { Tab, Tabs } from "@/components/Tabs";
-import { usePointerSwipe } from "@vueuse/core";
-import { ref } from "vue";
+import { Button, IconButton } from "@shinhan/solid-vue-ui";
+import { ref, watch } from "vue";
 
-// 첫 번째 Tabs
-const activeTab = ref(0);
-const handleTabChange = (newValue: number | string) => {
-  console.log("Tab changed to:", newValue);
-  activeTab.value = typeof newValue === "number" ? newValue : parseInt(String(newValue), 10);
-};
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+export interface ScKeypadProps {
+  /** 재배열 버튼 표시 여부 */
+  showRearrange?: boolean;
+  /** 다크 테마 사용 여부 */
+  isDarkTheme?: boolean;
+  /** 최대 입력 자릿수 */
+  maxLength?: number;
+  /** 초기 메시지  */
+  initialMessage?: string;
+  /** 4자리 단위로 그룹핑 안내 여부 */ //TODO:체크필요
+  cardNumberGroupCheck?: boolean;
+  /** v-model:values - 입력된 숫자 배열 */
+  values?: string[];
+}
 
-// Line Tabs (두 번째 Tabs)
-const TabsLineActive = ref(0);
-const TabsLine = [
-  { label: "항목1" },
-  { label: "항목2" },
-  { label: "항목3" },
-  { label: "항목4" },
-  { label: "항목5" },
-  { label: "항목6" },
-  { label: "항목7" },
-  { label: "항목8" },
-  { label: "항목9" },
-  { label: "항목10" },
-];
+export interface ScKeypadEmits {
+  /** 숫자 입력 이벤트 */
+  (e: "number-click", value: string): void;
+  /** 삭제 버튼 클릭 이벤트 */
+  (e: "delete-click"): void;
+  /** 재배열 버튼 클릭 이벤트 */
+  (e: "rearrange-click", numbers: string[]): void;
+  /** 입력 상태 변경 이벤트 */
+  (e: "input-change", count: number): void;
+  /** v-model:values 업데이트 이벤트 */
+  (e: "update:values", values: string[]): void;
+}
 
-// Secondary Tabs (세 번째 Tabs)
-const TabsSecondaryActive = ref(0);
-const TabsSecondary = [
-  { label: "항목1" },
-  { label: "항목2" },
-  { label: "항목3" },
-  { label: "항목4" },
-  { label: "항목5" },
-  { label: "항목6" },
-  { label: "항목7" },
-  { label: "항목8", iconName: "sample-icon" },
-  { label: "항목9", dot: true },
-  { label: "항목10", disabled: true },
-];
-
-// 콘텐츠 영역에 스와이프 기능 추가 (마우스 + 터치 지원)
-const contentRef = ref<HTMLElement>();
-
-// usePointerSwipe는 마우스 드래그와 터치 스와이프를 모두 지원합니다
-usePointerSwipe(contentRef, {
-  threshold: 50, // 최소 50px 이동해야 스와이프로 인식
-  onSwipeEnd(_e: PointerEvent, direction: "left" | "right" | "up" | "down" | "none") {
-    console.log("Swipe detected:", direction);
-
-    if (direction === "left") {
-      // 왼쪽으로 스와이프 -> 다음 탭으로 이동
-      navigateToNextTab();
-    } else if (direction === "right") {
-      // 오른쪽으로 스와이프 -> 이전 탭으로 이동
-      navigateToPrevTab();
-    }
-  },
-  onSwipe(_e: PointerEvent) {
-    // 스와이프 중 시각적 피드백 (필요시 활용)
-  },
+// ============================================================================
+// COMPONENT SETUP
+// ============================================================================
+const props = withDefaults(defineProps<ScKeypadProps>(), {
+  showRearrange: false,
+  isDarkTheme: false,
+  maxLength: 4,
+  initialMessage: "",
+  cardNumberGroupCheck: true,
+  values: () => [],
 });
 
-const navigateToNextTab = () => {
-  // Line Tabs (10개 항목)의 다음 탭으로 이동
-  if (TabsLineActive.value < TabsLine.length - 1) {
-    TabsLineActive.value += 1;
-    console.log("Next tab:", TabsLineActive.value);
+const emit = defineEmits<ScKeypadEmits>();
+
+// Refs
+const message = ref<string>(props.initialMessage);
+const inputCount = ref(0);
+const messageBox = ref<HTMLElement | null>(null);
+
+// 숫자 배열 (0~9)
+const numbers = ref(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]);
+
+// ============================================================================
+// METHODS
+// ============================================================================
+
+// 메시지 업데이트 함수
+const updateMessage = (text: string) => {
+  // message.value = text;
+  if (messageBox.value) {
+    messageBox.value.style.visibility = "visible";
   }
 };
 
-const navigateToPrevTab = () => {
-  // Line Tabs (10개 항목)의 이전 탭으로 이동
-  if (TabsLineActive.value > 0) {
-    TabsLineActive.value -= 1;
-    console.log("Previous tab:", TabsLineActive.value);
+// 숫자 버튼 클릭 핸들러
+const handleNumberClick = (number: string) => {
+  const currentValues = [...(props.values || [])];
+
+  if (inputCount.value < props.maxLength) {
+    // TODO:00 버튼인 경우 2자리 입력으로 처리
+    // if (number === "00") {
+    //   if (inputCount.value <= props.maxLength - 2) {
+    //     inputCount.value += 2;
+    //     currentValues.push("0", "0");
+    //     const currentInput = inputCount.value;
+    //     updateMessage(`총 ${props.maxLength}자리 중 ${currentInput}자리 입력 완료: 00`);
+    //     emit("number-click", number);
+    //     emit("update:values", currentValues);
+    //     emit("input-change", inputCount.value);
+    //   } else {
+    //     updateMessage(`마지막 ${props.maxLength - inputCount.value}자리만 입력 가능합니다.`);
+    //     return;
+    //   }
+    // } else {
+    /**
+     * 일반 숫자 버튼
+     */
+    inputCount.value++;
+    currentValues.push(number);
+    console.log("currentValues>>", currentValues);
+    const currentInput = inputCount.value;
+    updateMessage(`총 ${props.maxLength}자리 중 ${currentInput}번째 입력: ${number}`);
+    emit("number-click", number);
+    emit("update:values", currentValues);
+    emit("input-change", inputCount.value);
+    // }
+
+    // 카드번호 형식으로 그룹핑된 안내
+    if (props.cardNumberGroupCheck) {
+      if (inputCount.value === 4) {
+        updateMessage("첫 번째 4자리 입력 완료. 다음 4자리를 입력해주세요.");
+      } else if (inputCount.value === 8) {
+        updateMessage("두 번째 4자리 입력 완료. 다음 4자리를 입력해주세요.");
+      } else if (inputCount.value === 12) {
+        updateMessage("세 번째 4자리 입력 완료. 마지막 4자리를 입력해주세요.");
+      } else if (inputCount.value === props.maxLength) {
+        updateMessage("카드번호 입력이 완료되었습니다. 확인 버튼을 눌러주세요.");
+      }
+    }
+  } else {
+    updateMessage("최대 입력 개수에 도달했습니다.");
   }
 };
+
+// 삭제 버튼 클릭
+function handleDeleteClick() {
+  const currentValues = [...(props.values || [])];
+
+  if (inputCount.value > 0) {
+    // 마지막 두 자리가 00인지 확인
+    // const lastTwo = currentValues.slice(-2);
+    // const isLastInputDoubleZero = lastTwo.length === 2 && lastTwo[0] === "0" && lastTwo[1] === "0";
+
+    // if (isLastInputDoubleZero && inputCount.value % 2 === 0) {
+    //   // 00 입력을 삭제하는 경우 2자리 삭제
+    //   inputCount.value -= 2;
+    //   currentValues.pop();
+    //   currentValues.pop();
+    //   updateMessage(
+    //     `총 ${props.maxLength}자리 중 ${inputCount.value}자리 남음. 00이 삭제되었습니다.`
+    //   );
+    // } else {
+    //   // 일반 숫자 삭제
+    inputCount.value--;
+    currentValues.pop();
+    console.log("delete>>", currentValues);
+    updateMessage(`총 ${props.maxLength}자리 중 ${inputCount.value}자리 남음. 삭제되었습니다.`);
+    // }
+
+    emit("delete-click");
+    emit("update:values", currentValues);
+    emit("input-change", inputCount.value);
+
+    if (inputCount.value === 0) {
+      updateMessage(`입력이 초기화되었습니다. ${props.initialMessage}`);
+    }
+  } else {
+    updateMessage("삭제할 입력이 없습니다.");
+  }
+}
+
+// 재배열 버튼 클릭 핸들러
+const handleRearrangeClick = () => {
+  // 0~9 숫자를 랜덤하게 재배열
+  const shuffledNumbers = [...numbers.value];
+  for (let i = shuffledNumbers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = shuffledNumbers[i] as string;
+    shuffledNumbers[i] = shuffledNumbers[j] as string;
+    shuffledNumbers[j] = temp;
+  }
+  numbers.value = shuffledNumbers;
+
+  // 재배열된 숫자 순서를 메세지 안내
+  // const numberSequence = numbers.value.join(", ");
+  // updateMessage(`숫자 키패드가 재배열되었습니다. 새로운 순서는 ${numberSequence}입니다.`);
+
+  emit("rearrange-click", shuffledNumbers);
+};
+
+// 입력 카운트 초기화 메서드 (외부에서 호출 가능)
+const reset = () => {
+  inputCount.value = 0;
+  emit("update:values", []);
+  updateMessage(props.initialMessage);
+};
+
+// isDarkTheme prop 변경 감지
+watch(
+  () => props.isDarkTheme,
+  () => {
+    // 다크 테마 변경 시 필요한 작업 수행
+  }
+);
+
+// values prop 변경 감지 - inputCount 동기화
+watch(
+  () => props.values,
+  (newValues) => {
+    if (newValues) {
+      inputCount.value = newValues.length;
+    }
+  },
+  { immediate: true }
+);
+
+// ============================================================================
+// LIFECYCLE
+// ============================================================================
+// onMounted(() => {
+// updateMessage(props.initialMessage || "카드번호를 입력해주세요. 총 16자리입니다.");
+// });
+
+// ============================================================================
+// EXPOSE
+// ============================================================================
+defineExpose({
+  reset,
+  inputCount,
+});
 </script>
 
 <style lang="scss" scoped>
-.swipeable-content {
-  cursor: grab;
-  user-select: none;
-  touch-action: pan-y; // 세로 스크롤은 허용하면서 좌우 스와이프 감지
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:active {
-    cursor: grabbing;
-  }
-
-  .content-display {
-    text-align: center;
-    padding: 40px;
-
-    h2 {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 20px;
-      color: #212529;
-    }
-
-    .swipe-hint {
-      display: inline-block;
-      padding: 16px 24px;
-      background-color: #e7f3ff;
-      border-radius: 8px;
-      font-size: 16px;
-      color: #0066cc;
-      margin-bottom: 24px;
-      font-weight: 500;
-    }
-
-    .tab-info {
-      margin-top: 32px;
-      padding: 24px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      text-align: left;
-
-      p {
-        font-size: 14px;
-        line-height: 1.8;
-        color: #495057;
-        margin-bottom: 8px;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-      }
-    }
-  }
-}
+@use "@assets/styles/module/_keypad" as *;
 </style>
