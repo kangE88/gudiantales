@@ -193,6 +193,28 @@ useSortableCustom(groupEl2, groupList2, {
   },
 })
 
+// ============================================
+// 7. Direction 옵션 - 가로 정렬
+// ============================================
+const horizontalEl = ref()
+const horizontalPickIndex = ref()
+const horizontalList = ref([
+  { label: '항목 1', value: 'h1', main: '1', sub: '', image: imgSample1 },
+  { label: '항목 2', value: 'h2', main: '2', sub: '', image: imgSample2 },
+  { label: '항목 3', value: 'h3', main: '3', sub: '', image: imgSample1 },
+  { label: '항목 4', value: 'h4', main: '4', sub: '', image: imgSample2 },
+  { label: '항목 5', value: 'h5', main: '5', sub: '', image: imgSample1 },
+  { label: '항목 6', value: 'h6', main: '6', sub: '', image: imgSample2 },
+])
+
+useSortableCustom(horizontalEl, horizontalList, {
+  animation: 150,
+  direction: 'horizontal',
+  onEnd: (evt) => {
+    addLog(`[가로정렬] ${evt.oldIndex + 1}번 → ${evt.newIndex + 1}번`)
+  },
+})
+
 // 선택된 항목 클릭 핸들러
 const onClickItem = (item, pickIndexRef) => {
   pickIndexRef.value = item.value
@@ -220,7 +242,7 @@ const onClickItem = (item, pickIndexRef) => {
     <!-- 탭 네비게이션 -->
     <div class="tab-navigation">
       <button
-        v-for="(tab, index) in ['기본', 'Handle', 'Delay', 'Disabled', 'Filter', 'Group']"
+        v-for="(tab, index) in ['기본', 'Handle', 'Delay', 'Disabled', 'Filter', 'Group', '가로정렬']"
         :key="index"
         :class="['tab-button', { active: activeTab === index }]"
         @click="activeTab = index"
@@ -558,6 +580,33 @@ const onClickItem = (item, pickIndexRef) => {
           </div>
         </div>
       </section>
+
+      <!-- 7. 가로 정렬 -->
+      <section v-show="activeTab === 6" class="example-section">
+        <h2>7️⃣ Direction 옵션 - 가로 정렬</h2>
+        <p class="description">
+          • direction: 'horizontal' - 가로 방향 정렬<br />
+          • 기본값은 'vertical' (세로)<br />
+          💡 가로로 배치된 항목들을 드래그하여 순서를 변경할 수 있습니다
+        </p>
+        <div class="horizontal-container" ref="horizontalEl">
+          <div
+            v-for="item in horizontalList"
+            :key="item.value"
+            class="horizontal-item"
+            @click="onClickItem(item, horizontalPickIndex)"
+          >
+            <img
+              v-if="item.image"
+              :src="item.image"
+              alt=""
+              class="horizontal-thumb"
+            />
+            <div class="horizontal-label">{{ item.main }}</div>
+            <div class="drag-indicator">☰</div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -748,6 +797,61 @@ const onClickItem = (item, pickIndexRef) => {
 .drag-handle {
   &:active {
     cursor: grabbing !important;
+  }
+}
+
+// 가로 정렬 컨테이너
+.horizontal-container {
+  display: flex;
+  gap: 15px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  overflow-x: auto;
+  min-height: 150px;
+  align-items: flex-start;
+
+  .horizontal-item {
+    flex: 0 0 auto;
+    width: 100px;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    cursor: move;
+    transition: all 0.2s;
+    position: relative;
+
+    &:hover {
+      border-color: #007bff;
+      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+    }
+
+    .horizontal-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    .horizontal-label {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .drag-indicator {
+      font-size: 1.2rem;
+      color: #6c757d;
+      cursor: grab;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
   }
 }
 
