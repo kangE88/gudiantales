@@ -1,144 +1,249 @@
-import type { UseSortableOptions } from '@vueuse/integrations/useSortable'
-import { useSortable } from '@vueuse/integrations/useSortable'
-import type { Ref } from 'vue'
+<route lang="yaml">
+meta:
+  id: useSortableList
+  title: useSortableList 테스트
+  menu: useSortableList
+  layout: SubLayout
+  category: uiUtils
+  publish: 이강
+  publishVersion: 0.8
+  # 네비게이션 상세 옵션
+  header:
+    variant: sub
+    fixed: true
+    showBack: true
+    close: true
+</route>
+<template>
+  <div class="sc-list sc-select__list">
+    <div class="select-list__group select-list__image">
+      <SelectBoxGroup
+        v-model="pickIndex"
+        orientation="vertical"
+        variant="solid"
+        as="div"
+        :items="basicListItems"
+        ref="el"
+      >
+        <!-- v-model="imgValue" -->
+        <template #contents="{ item }">
+          <ListItem :left="{ mainText: item.main, subText: item.sub }">
+            <template #leftIcon>
+              <img
+                v-if="item.image"
+                :src="item.image"
+                alt=""
+                class="thumb"
+                @click="onClickItem(item)"
+              />
+            </template>
+            <template #rightIcon>
+              <IconButton
+                iconName="Menu"
+                size="medium"
+                aria-label="드래그하여 순서 변경"
+                @click.stop
+              />
+            </template>
+          </ListItem>
+        </template>
+      </SelectBoxGroup>
+    </div>
+  </div>
+  <section
+    class="section"
+    ref="contentRef2"
+  ></section>
+  <BottomActionContainer :scrollDim="true">
+    <BoxButtonGroup size="xlarge">
+      <BoxButton
+        text="완료"
+        :disabled="pickIndex !== undefined ? false : true"
+      />
+    </BoxButtonGroup>
+  </BottomActionContainer>
+</template>
 
-/**
- * 드래그 앤 드롭으로 리스트 정렬을 가능하게 하는 공통 함수
- * 
- * @description
- * - Sortable.js를 기반으로 한 VueUse의 useSortable을 래핑
- * - 스크롤 컨테이너 내에서 자동 스크롤 기능을 포함한 기본 설정 제공
- * 
- * @example
- * ```vue
- * <script setup>
- * import { ref } from 'vue'
- * import { useSortableList } from '@shc-nss/shared'
- * 
- * const list = ref([
- *   { id: 1, name: 'Item 1' },
- *   { id: 2, name: 'Item 2' },
- * ])
- * const el = ref()
- * 
- * useSortableList(el, list)
- * </script>
- * 
- * <template>
- *   <div ref="el">
- *     <div v-for="item in list" :key="item.id">{{ item.name }}</div>
- *   </div>
- * </template>
- * ```
- * 
- * @param el - 정렬 가능하게 만들 요소의 ref
- * @param list - 정렬할 데이터 배열의 ref
- * @param options - Sortable.js 옵션 (선택사항)
- * @returns useSortable의 반환값
- */
-export function useSortableList<T = any>(
-  el: Ref<HTMLElement | null | undefined>,
-  list: Ref<T[]>,
-  options?: UseSortableOptions
-) {
-  // 기본 옵션 설정
-  const defaultOptions: UseSortableOptions = {
-    animation: 150, // 애니메이션 속도 (ms)
-    scroll: true, // 자동 스크롤 활성화
-    forceAutoScrollFallback: true, // 모든 브라우저에서 자동 스크롤 강제 활성화
-    scrollSensitivity: 50, // 가장자리에서 50px 이내로 가면 스크롤 시작
-    scrollSpeed: 20, // 스크롤 속도
-    bubbleScroll: true, // 부모 요소도 스크롤 가능
-  }
+<script setup>
+import { useSortableCustom, useSortableList } from "@shc-nss/shared/utils";
+import {
+  BottomActionContainer,
+  BoxButton,
+  BoxButtonGroup,
+  IconButton,
+  ListItem,
+  SelectBoxGroup,
+} from "@shc-nss/ui/solid";
+import { ref, watch } from "vue";
+const el = ref();
+const pickIndex = ref();
+const onClickItem = (item) => {
+  pickIndex.value = item.value;
+};
 
-  // 사용자 옵션과 병합
-  const mergedOptions = {
-    ...defaultOptions,
-    ...options,
-  }
+// 데모용 이미지 (images 안의 샘플)
+import imgSample1 from "@assets/images/pages/demo/img-sample1.png";
+import imgSample2 from "@assets/images/pages/demo/img-sample2.png";
 
-  return useSortable(el, list, mergedOptions)
-}
+const basicListItems = ref([
+  {
+    label: "신한 Deep Dream",
+    value: "i1", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i2", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i3", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i4", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i5", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i6", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i7", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i8", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i9", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i10", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i11", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i12", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i13", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i14", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i15", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i16", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i17", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i18", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i19", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample1,
+  },
+  {
+    label: "신한 Deep Dream",
+    value: "i20", //셀렉티드 값
+    main: "신한 Deep Dream",
+    sub: "서브텍스트",
+    image: imgSample2,
+  },
+]);
+useSortableList(el, basicListItems);
 
-/**
- * 커스텀 옵션으로 Sortable 설정
- * 
- * @description
- * - 기본 옵션 없이 완전한 커스터마이징이 필요한 경우 사용
- * - useSortable을 직접 래핑
- * 
- * @example
- * ```vue
- * <script setup>
- * import { ref } from 'vue'
- * import { useSortableCustom } from '@shc-nss/shared'
- * 
- * const list = ref([...])
- * const el = ref()
- * 
- * useSortableCustom(el, list, {
- *   animation: 300,
- *   handle: '.drag-handle',
- *   ghostClass: 'ghost',
- * })
- * </script>
- * ```
- * 
- * @param el - 정렬 가능하게 만들 요소의 ref
- * @param list - 정렬할 데이터 배열의 ref
- * @param options - Sortable.js 옵션
- * @returns useSortable의 반환값
- */
-export function useSortableCustom<T = any>(
-  el: Ref<HTMLElement | null | undefined>,
-  list: Ref<T[]>,
-  options: UseSortableOptions
-) {
-  return useSortable(el, list, options)
-}
+useSortableCustom(el, basicListItems);
 
-/**
- * 기본 Sortable 옵션 상수
- * 
- * @description
- * 프로젝트 전체에서 사용할 수 있는 기본 Sortable.js 옵션
- */
-export const DEFAULT_SORTABLE_OPTIONS: UseSortableOptions = {
-  animation: 150,
-  scroll: true,
-  forceAutoScrollFallback: true,
-  scrollSensitivity: 50,
-  scrollSpeed: 20,
-  bubbleScroll: true,
-}
+watch(basicListItems, (newValue) => {
+  console.log("basicListItems::", basicListItems.value);
+});
+watch(pickIndex, (newValue) => {
+  console.log("pickIndex::", pickIndex.value);
+});
 
-/**
- * 빠른 스크롤을 위한 Sortable 옵션
- * 
- * @description
- * 긴 리스트에서 빠른 스크롤이 필요한 경우 사용
- */
-export const FAST_SCROLL_OPTIONS: UseSortableOptions = {
-  animation: 150,
-  scroll: true,
-  forceAutoScrollFallback: true,
-  scrollSensitivity: 80,
-  scrollSpeed: 40,
-  bubbleScroll: true,
-}
-
-/**
- * 느린 스크롤을 위한 Sortable 옵션
- * 
- * @description
- * 정밀한 조작이 필요한 경우 사용
- */
-export const SLOW_SCROLL_OPTIONS: UseSortableOptions = {
-  animation: 200,
-  scroll: true,
-  forceAutoScrollFallback: true,
-  scrollSensitivity: 30,
-  scrollSpeed: 10,
-  bubbleScroll: true,
-}
-
+// useSortable(el, basicListItems, {
+//   animation: 150, //드래그 애니메이션 속도
+//   scroll: true, //자동스크롤 활성화
+//   scrollSensitivity: 30, //가장자리에서 30px 이내로 가면 스크롤 시작
+//   scrollSpeed: 20, // 스크롤 속도
+//   //bubbleScroll: true, //부모요소도 스크롤 가능
+//   forceAutoScrollFallback: true, // kick
+// });
+</script>
