@@ -1,866 +1,611 @@
-<route lang="yaml">
-meta:
-  id: useSortableEx
-  title: useSortableEx 테스트
-  menu: useSortableEx
-  layout: SubLayout
-  category: uiUtils
-  publish: 이강
-  publishVersion: 0.9
-  header:
-    variant: sub
-    fixed: true
-    showBack: true
-    close: true
-</route>
-
-<script setup>
-import { useSortableCustom, useSortableList } from '@shc-nss/shared'
 import {
-  BottomActionContainer,
+  BasicCard,
+  BasicChipGroup,
+  BottomSheet,
   BoxButton,
-  BoxButtonGroup,
-  IconButton,
-  ListItem,
-  SelectBoxGroup
-} from '@shc-nss/ui/solid'
-import { ref, watch } from 'vue'
+  Divider,
+  Icon,
+  ScheduleDatePicker,
+  SegmentSwitch,
+  TextDropdown,
+  Tooltip,
+  WheelPicker,
+} from "@shc-nss/ui/solid";
+import { fn } from "@storybook/test";
+import type { Meta, StoryObj } from "@storybook/vue3";
+import { addDays, format, isSameDay, subDays } from "date-fns";
+import { computed, ref } from "vue";
 
-// 데모용 이미지
-import imgSample1 from '@assets/images/pages/demo/img-sample1.png'
-import imgSample2 from '@assets/images/pages/demo/img-sample2.png'
-
-// 현재 선택된 탭
-const activeTab = ref(0)
-
-// 이벤트 로그
-const eventLog = ref([])
-const addLog = (message) => {
-  eventLog.value.unshift(`[${new Date().toLocaleTimeString()}] ${message}`)
-  if (eventLog.value.length > 10) {
-    eventLog.value.pop()
-  }
-}
-const clearLog = () => {
-  eventLog.value = []
-}
-
-// ============================================
-// 1. 기본 예제 (useSortableList)
-// ============================================
-const basicEl = ref()
-const basicPickIndex = ref()
-const basicList = ref([
-  { label: '항목 1', value: 'i1', main: '신한 Deep Dream 1', sub: '기본 정렬 예제', image: imgSample1 },
-  { label: '항목 2', value: 'i2', main: '신한 Deep Dream 2', sub: '애니메이션 150ms', image: imgSample2 },
-  { label: '항목 3', value: 'i3', main: '신한 Deep Dream 3', sub: '스크롤 감도 50px', image: imgSample1 },
-  { label: '항목 4', value: 'i4', main: '신한 Deep Dream 4', sub: '스크롤 속도 20', image: imgSample2 },
-  { label: '항목 5', value: 'i5', main: '신한 Deep Dream 5', sub: '드래그하여 순서 변경', image: imgSample1 },
-])
-
-useSortableList(basicEl, basicList, {
-  onStart: (evt) => {
-    addLog(`[기본] 드래그 시작: ${evt.oldIndex + 1}번 항목`)
+const meta: Meta<typeof ScheduleDatePicker> = {
+  title: "Solid-Modules/DatePicker/ScheduleDatePicker",
+  component: ScheduleDatePicker,
+  args: {
+    defaultView: "monthly",
+    onClickDay: fn(),
+    onClickHeader: fn(),
+    "onUpdate:modelValue": fn(),
+    "onUpdate:viewDate": fn(),
+    data: [
+      { id: 1, type: "label", labelColor: "blue", date: new Date(), title: "테스트테스트" },
+      { id: 2, type: "income", date: new Date(), title: "+1111111" },
+      { id: 3, type: "expense", date: new Date(), title: "-1234234" },
+      { id: 4, type: "label", labelColor: "green", date: new Date(), title: "테스트테스트" },
+      { id: 5, type: "label", labelColor: "blue", date: new Date(), title: "테스트테스트" },
+    ],
   },
-  onEnd: (evt) => {
-    addLog(`[기본] 드래그 종료: ${evt.oldIndex + 1}번 → ${evt.newIndex + 1}번`)
+  argTypes: {
+    minDate: {
+      control: "date",
+      description: "최소 날짜",
+      table: {
+        category: "props",
+        type: { summary: "Date" },
+        defaultValue: { summary: "() => new Date(1900, 1, 1)" },
+      },
+    },
+    maxDate: {
+      control: "date",
+      description: "최대 날짜",
+      table: {
+        category: "props",
+        type: { summary: "Date" },
+        defaultValue: { summary: "() => new Date(2100, 12, 31)" },
+      },
+    },
+    showOutsideDays: {
+      control: "boolean",
+      description: "해당 달이 아닌 날짜 노출 여부",
+      table: {
+        category: "props",
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    fixedWeeks: {
+      control: "boolean",
+      description: "달력 높이 고정 여부 (6주)",
+      table: {
+        category: "props",
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    isDateDisabled: {
+      control: "object",
+      description: "날짜 비활성화 체크 함수",
+      table: {
+        category: "props",
+        type: { summary: "(date: Date) => boolean" },
+      },
+    },
+    isDateHoliday: {
+      control: "object",
+      description: "날짜 공휴일 체크 함수",
+      table: {
+        category: "props",
+        type: { summary: "(date: Date) => boolean" },
+      },
+    },
+    formatters: {
+      control: "object",
+      description: "헤더, 요일 포맷 함수",
+      table: {
+        category: "props",
+        type: { summary: "(date: Date) => boolean" },
+      },
+    },
+    highlightWeekends: {
+      control: "boolean",
+      description: "주말, 공휴일 색깔 강조 여부",
+      table: {
+        category: "props",
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    defaultView: {
+      control: "radio",
+      options: ["weekly", "monthly"],
+      description: "주간/월간 달력",
+      table: {
+        category: "props",
+        type: { summary: `"weekly" | "monthly"` },
+        defaultValue: { summary: "monthly" },
+      },
+    },
+    showToggleView: {
+      control: "boolean",
+      description: "주/월 토글 여부",
+      table: {
+        category: "props",
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    disabled: {
+      control: "boolean",
+      description: "비활성화 여부",
+      table: {
+        category: "props",
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    attributes: {
+      control: "object",
+      description: "키: 날짜 문자열 (YYYY-MM-DD), 값: 날짜에 적용할 attributes",
+      table: {
+        category: "props",
+        type: { summary: "Record<string, DatePickerAttributeValue>" },
+        detail: `- dot?: boolean | string\n- highlight?: boolean | string\n- class?: string\n- ariaLabel?: string`,
+      },
+    },
+    modelValue: {
+      control: false,
+      description: "선택된 값",
+      table: {
+        category: "model",
+        type: { summary: "Date | {from: Date | null; to?: Date | null}" },
+        defaultValue: { summary: "null" },
+      },
+    },
+    viewDate: {
+      control: "date",
+      description: "보고 있는 날짜",
+      table: {
+        category: "model",
+        type: { summary: "Date" },
+        defaultValue: { summary: "() => new Date()" },
+      },
+    },
+    data: {
+      control: "object",
+      description: "스케줄 데이터",
+      table: {
+        category: "props",
+        type: {
+          summary: "DatePickerScheduleItem[]",
+          detail: `- id: string | number\n- date: Date\n- title: string\n- type: 'income' | 'expense' | 'label'\n- labelColor?: TintLabelProps["color"]`,
+        },
+        defaultValue: { summary: "() => []" },
+      },
+    },
+    "update:modelValue": {
+      table: {
+        category: "events",
+        type: { summary: "Date | {from: Date | null; to?: Date | null}" },
+      },
+    },
+    "update:viewDate": {
+      table: {
+        category: "events",
+        type: { summary: "Date" },
+      },
+    },
+    clickDay: {
+      description: "날짜 클릭 시",
+      table: {
+        category: "events",
+        type: { summary: "Date" },
+      },
+    },
+    clickHeader: {
+      description: "연월 헤더 클릭 시",
+      table: {
+        category: "events",
+        type: { summary: "Date" },
+      },
+    },
+    onClickHeader: {
+      table: { disable: true },
+    },
+    onClickDay: {
+      table: { disable: true },
+    },
+    "onUpdate:viewDate": {
+      table: { disable: true },
+    },
+    "onUpdate:modelValue": {
+      table: { disable: true },
+    },
+    "day-content": {
+      table: {
+        type: {
+          summary: "CalendarDay",
+          detail: `- date: Date\n- disabled: boolean\n- selected: boolean\n- today: boolean\n- holiday: boolean\n- otherMonth: boolean\n- schedules: DatePickerScheduleItem[]`,
+        },
+      },
+    },
   },
-})
+};
 
-// ============================================
-// 2. Handle 옵션 - 특정 핸들로만 드래그
-// ============================================
-const handleEl = ref()
-const handlePickIndex = ref()
-const handleList = ref([
-  { label: '항목 A', value: 'h1', main: '항목 A', sub: '핸들 아이콘(☰)을 잡고 드래그하세요', image: imgSample1 },
-  { label: '항목 B', value: 'h2', main: '항목 B', sub: '다른 영역은 드래그 불가', image: imgSample2 },
-  { label: '항목 C', value: 'h3', main: '항목 C', sub: '핸들만 활성화', image: imgSample1 },
-  { label: '항목 D', value: 'h4', main: '항목 D', sub: '정확한 제어 가능', image: imgSample2 },
-])
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-useSortableCustom(handleEl, handleList, {
-  animation: 200,
-  handle: '.drag-handle',
-  onUpdate: (evt) => {
-    addLog(`[핸들] 위치 변경: ${evt.oldIndex + 1}번 → ${evt.newIndex + 1}번`)
+export const Default: Story = {
+  render: (args) => ({
+    components: { ScheduleDatePicker, Icon },
+    setup() {
+      const selectedDate = ref(null);
+
+      return {
+        args,
+        selectedDate,
+      };
+    },
+    template: `
+			<div style="width: 360px;max-width:100%;">
+				<ScheduleDatePicker 
+					v-bind="args" 
+					v-model="selectedDate"
+				/>
+				<p style="margin-top: 20px; text-align: center;">Selected: {{ selectedDate || 'None' }}</p>
+			</div>
+		`,
+  }),
+};
+
+export const Data: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+- \`{
+    id: string | number; 
+    date: Date; 
+    title: string; 
+    type: 'income' | 'expense' | 'label'; 
+    labelColor?: TintLabelProps["color"];
+}\`
+- \`type\`을 \`label\`으로 설정하면 \`TintLabel\` 컴포넌트가 노출되고 \`labelColor\`를 통해 색깔을 설정할 수 있습니다.
+- \`type\`을 \`income\`으로 설정하면 파란색으로 텍스트가 노출됩니다.
+- \`type\`을 \`expense\`으로 설정하면 빨간색으로 텍스트가 노출됩니다.
+- 데이터는 최대 3건까지만 노출되고, 나머지는 건수로 노출됩니다.
+`,
+      },
+    },
   },
-})
+  render: () => ({
+    components: { ScheduleDatePicker },
+    setup() {
+      const today = new Date();
+      const date1 = subDays(today, 1);
+      const date2 = addDays(today, 1);
+      const data = [
+        { id: 1, type: "label", labelColor: "blue", date: today, title: "label" },
+        { id: 2, type: "income", date: today, title: "income" },
+        { id: 3, type: "expense", date: today, title: "expense" },
+        { id: 4, type: "label", labelColor: "green", date: today, title: "텍스트" },
+        { id: 5, type: "label", labelColor: "blue", date: today, title: "텍스트" },
+        { id: 6, type: "label", labelColor: "yellow", date: date1, title: "텍스트" },
+        { id: 7, type: "label", labelColor: "cyan", date: date2, title: "긴텍스트긴텍스트" },
+        { id: 8, type: "label", labelColor: "yellow", date: date2, title: "텍스트" },
+      ];
 
-// ============================================
-// 3. Delay 옵션 - 드래그 시작 지연
-// ============================================
-const delayEl = ref()
-const delayPickIndex = ref()
-const delayList = ref([
-  { label: '지연 1', value: 'd1', main: '지연 항목 1', sub: '300ms 후 드래그 시작', image: imgSample1 },
-  { label: '지연 2', value: 'd2', main: '지연 항목 2', sub: '실수 방지에 유용', image: imgSample2 },
-  { label: '지연 3', value: 'd3', main: '지연 항목 3', sub: '모바일 환경 권장', image: imgSample1 },
-])
+      return {
+        data,
+      };
+    },
+    template: `
+			<div style="width: 360px;max-width:100%;">
+				<ScheduleDatePicker :data="data" />
+			</div>
+		`,
+  }),
+};
 
-useSortableCustom(delayEl, delayList, {
-  animation: 150,
-  delay: 300,
-  onStart: () => {
-    addLog('[지연] 300ms 지연 후 드래그 시작됨')
+export const FontResize: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+- 폰트 사이즈를 container 너비에 맞추어 reszing 처리합니다.
+`,
+      },
+    },
   },
-})
-
-// ============================================
-// 4. Disabled 옵션 - 동적 활성화/비활성화
-// ============================================
-const disabledEl = ref()
-const disabledPickIndex = ref()
-const isDisabled = ref(false)
-const disabledList = ref([
-  { label: '토글 1', value: 'dis1', main: '토글 항목 1', sub: '정렬 활성화/비활성화', image: imgSample1 },
-  { label: '토글 2', value: 'dis2', main: '토글 항목 2', sub: '체크박스로 제어', image: imgSample2 },
-  { label: '토글 3', value: 'dis3', main: '토글 항목 3', sub: '동적 제어 가능', image: imgSample1 },
-])
-
-useSortableCustom(disabledEl, disabledList, {
-  animation: 150,
-  get disabled() {
-    return isDisabled.value
+  args: {
+    data: [
+      { id: 1, type: "income", date: new Date(), title: "+100" },
+      { id: 2, type: "income", date: new Date(), title: "+1234567890" },
+      { id: 3, type: "income", date: new Date(), title: "+123456790123456" },
+    ],
   },
-  onStart: () => {
-    addLog('[토글] 정렬 가능 - 드래그 시작')
+  render: (args) => ({
+    components: { ScheduleDatePicker },
+    setup() {
+      return {
+        args,
+      };
+    },
+    template: `
+			<div style="width: 360px;max-width:100%;">
+				<ScheduleDatePicker v-bind="args" />
+			</div>
+		`,
+  }),
+};
+
+export const WithOptionsSlot: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+- \`options\` slot을 통해 타이틀과 달력 사이에 내용을 추가할 수 있습니다.
+`,
+      },
+    },
   },
-})
+  render: () => ({
+    components: { ScheduleDatePicker, BasicChipGroup },
+    setup() {
+      const chipItems = [
+        { text: "전체선택", value: "1" },
+        { text: "텍스트1", value: "2" },
+        { text: "텍스트2", value: "3" },
+      ];
 
-watch(isDisabled, (newValue) => {
-  addLog(`[토글] 정렬 ${newValue ? '비활성화' : '활성화'}`)
-})
+      return {
+        chipItems,
+      };
+    },
+    template: `
+			<div style="width: 360px;max-width:100%;">
+				<ScheduleDatePicker>
+          <template #options>
+            <BasicChipGroup :items="chipItems" variant="outline" />
+          </template>
+        </ScheduleDatePicker>
+			</div>
+		`,
+  }),
+};
 
-// ============================================
-// 5. Filter 옵션 - 특정 항목 드래그 방지
-// ============================================
-const filterEl = ref()
-const filterPickIndex = ref()
-const filterList = ref([
-  { label: '일반 1', value: 'f1', main: '일반 항목 1', sub: '드래그 가능', image: imgSample1, locked: false },
-  { label: '잠금', value: 'f2', main: '🔒 잠금 항목', sub: '드래그 불가', image: imgSample2, locked: true },
-  { label: '일반 2', value: 'f3', main: '일반 항목 2', sub: '드래그 가능', image: imgSample1, locked: false },
-  { label: '잠금', value: 'f4', main: '🔒 잠금 항목', sub: '드래그 불가', image: imgSample2, locked: true },
-  { label: '일반 3', value: 'f5', main: '일반 항목 3', sub: '드래그 가능', image: imgSample1, locked: false },
-])
+export const WithHeaderSlot: Story = {
+  render: () => ({
+    components: {
+      ScheduleDatePicker,
+      BottomSheet,
+      WheelPicker,
+      BoxButton,
+      TextDropdown,
+      Tooltip,
+      SegmentSwitch,
+    },
+    setup() {
+      const modelValue = ref(new Date("2025-08-01"));
+      const isOpen = ref(false);
+      const pickerValue = ref([]);
+      const options = [
+        Array.from({ length: 7 }, (_, i) => ({ label: i + 2020, value: i + 2020 })),
+        Array.from({ length: 12 }, (_, i) => ({ label: i + 1, value: i + 1 })),
+      ];
 
-useSortableCustom(filterEl, filterList, {
-  animation: 150,
-  filter: '.locked-item',
-  onFilter: (evt) => {
-    addLog('[필터] 잠긴 항목은 드래그할 수 없습니다')
-  },
-})
+      function onClick() {
+        //@ts-ignore
+        pickerValue.value = [modelValue.value.getFullYear(), modelValue.value.getMonth() + 1];
+        isOpen.value = true;
+      }
 
-// ============================================
-// 6. Group 옵션 - 여러 리스트 간 이동
-// ============================================
-const groupEl1 = ref()
-const groupEl2 = ref()
-const groupPickIndex1 = ref()
-const groupPickIndex2 = ref()
-const groupList1 = ref([
-  { label: '그룹A-1', value: 'g1', main: '그룹A 항목 1', sub: '다른 그룹으로 이동 가능', image: imgSample1 },
-  { label: '그룹A-2', value: 'g2', main: '그룹A 항목 2', sub: '드래그하여 이동', image: imgSample2 },
-  { label: '그룹A-3', value: 'g3', main: '그룹A 항목 3', sub: '그룹 간 공유', image: imgSample1 },
-])
-const groupList2 = ref([
-  { label: '그룹B-1', value: 'g4', main: '그룹B 항목 1', sub: '다른 그룹으로 이동 가능', image: imgSample2 },
-  { label: '그룹B-2', value: 'g5', main: '그룹B 항목 2', sub: '드래그하여 이동', image: imgSample1 },
-  { label: '그룹B-3', value: 'g6', main: '그룹B 항목 3', sub: '그룹 간 공유', image: imgSample2 },
-])
+      function changeViewDate() {
+        modelValue.value = new Date(pickerValue.value.join("-"));
+        isOpen.value = false;
+      }
 
-useSortableCustom(groupEl1, groupList1, {
-  animation: 150,
-  group: 'shared',
-  onAdd: (evt) => {
-    addLog(`[그룹A] 항목 추가됨: ${evt.newIndex + 1}번 위치`)
-  },
-  onRemove: (evt) => {
-    addLog(`[그룹A] 항목 제거됨: ${evt.oldIndex + 1}번 위치`)
-  },
-})
+      const formattedViewDate = computed(() => format(modelValue.value, "yyyy년 MM월"));
 
-useSortableCustom(groupEl2, groupList2, {
-  animation: 150,
-  group: 'shared',
-  onAdd: (evt) => {
-    addLog(`[그룹B] 항목 추가됨: ${evt.newIndex + 1}번 위치`)
-  },
-  onRemove: (evt) => {
-    addLog(`[그룹B] 항목 제거됨: ${evt.oldIndex + 1}번 위치`)
-  },
-})
-
-// ============================================
-// 7. Direction 옵션 - 가로 정렬
-// ============================================
-const horizontalEl = ref()
-const horizontalPickIndex = ref()
-const horizontalList = ref([
-  { label: '항목 1', value: 'h1', main: '1', sub: '', image: imgSample1 },
-  { label: '항목 2', value: 'h2', main: '2', sub: '', image: imgSample2 },
-  { label: '항목 3', value: 'h3', main: '3', sub: '', image: imgSample1 },
-  { label: '항목 4', value: 'h4', main: '4', sub: '', image: imgSample2 },
-  { label: '항목 5', value: 'h5', main: '5', sub: '', image: imgSample1 },
-  { label: '항목 6', value: 'h6', main: '6', sub: '', image: imgSample2 },
-])
-
-useSortableCustom(horizontalEl, horizontalList, {
-  animation: 150,
-  direction: 'horizontal',
-  onEnd: (evt) => {
-    addLog(`[가로정렬] ${evt.oldIndex + 1}번 → ${evt.newIndex + 1}번`)
-  },
-})
-
-// 선택된 항목 클릭 핸들러
-const onClickItem = (item, pickIndexRef) => {
-  pickIndexRef.value = item.value
-}
-</script>
-
-<template>
-  <div class="sortable-examples">
-    <!-- 이벤트 로그 -->
-    <section class="log-section">
-      <div class="log-header">
-        <h3>📋 이벤트 로그</h3>
-        <BoxButton text="초기화" size="small" @click="clearLog" />
-      </div>
-      <div class="log-content">
-        <div v-if="eventLog.length === 0" class="log-empty">
-          이벤트가 없습니다. 항목을 드래그해보세요!
-        </div>
-        <div v-for="(log, index) in eventLog" :key="index" class="log-item">
-          {{ log }}
-        </div>
-      </div>
-    </section>
-
-    <!-- 탭 네비게이션 -->
-    <div class="tab-navigation">
-      <button
-        v-for="(tab, index) in ['기본', 'Handle', 'Delay', 'Disabled', 'Filter', 'Group', '가로정렬']"
-        :key="index"
-        :class="['tab-button', { active: activeTab === index }]"
-        @click="activeTab = index"
-      >
-        {{ tab }}
-      </button>
-    </div>
-
-    <!-- 탭 컨텐츠 -->
-    <div class="tab-content">
-      <!-- 1. 기본 예제 -->
-      <section v-show="activeTab === 0" class="example-section">
-        <h2>1️⃣ 기본 옵션 (useSortableList)</h2>
-        <p class="description">
-          • animation: 150ms - 애니메이션 속도<br />
-          • scrollSensitivity: 50px - 스크롤 시작 감도<br />
-          • scrollSpeed: 20 - 스크롤 속도<br />
-          • onStart, onEnd - 이벤트 핸들러<br />
-          💡 오른쪽 메뉴 아이콘을 드래그하세요
-        </p>
-        <div class="sc-list sc-select__list">
-          <div class="select-list__group select-list__image">
-            <SelectBoxGroup
-              v-model="basicPickIndex"
-              orientation="vertical"
-              variant="solid"
-              as="div"
-              :items="basicList"
-              ref="basicEl"
-            >
-              <template #contents="{ item }">
-                <ListItem :left="{ mainText: item.main, subText: item.sub }">
-                  <template #leftIcon>
-                    <img
-                      v-if="item.image"
-                      :src="item.image"
-                      alt=""
-                      class="thumb"
-                      @click="onClickItem(item, basicPickIndex)"
-                    />
-                  </template>
-                  <template #rightIcon>
-                    <IconButton
-                      iconName="Menu"
-                      size="medium"
-                      aria-label="드래그하여 순서 변경"
-                      @click.stop
-                    />
-                  </template>
-                </ListItem>
-              </template>
-            </SelectBoxGroup>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. Handle 옵션 -->
-      <section v-show="activeTab === 1" class="example-section">
-        <h2>2️⃣ Handle 옵션</h2>
-        <p class="description">
-          • handle: '.drag-handle' - 특정 요소를 잡아야만 드래그 가능<br />
-          • onUpdate - 정렬 업데이트 이벤트<br />
-          💡 메뉴 아이콘만 드래그 가능합니다 (다른 영역 클릭은 선택 동작)
-        </p>
-        <div class="sc-list sc-select__list">
-          <div class="select-list__group select-list__image">
-            <SelectBoxGroup
-              v-model="handlePickIndex"
-              orientation="vertical"
-              variant="solid"
-              as="div"
-              :items="handleList"
-              ref="handleEl"
-            >
-              <template #contents="{ item }">
-                <ListItem :left="{ mainText: item.main, subText: item.sub }">
-                  <template #leftIcon>
-                    <img
-                      v-if="item.image"
-                      :src="item.image"
-                      alt=""
-                      class="thumb"
-                      @click="onClickItem(item, handlePickIndex)"
-                    />
-                  </template>
-                  <template #rightIcon>
-                    <div class="drag-handle" style="cursor: grab; padding: 8px;">
-                      <IconButton
-                        iconName="Menu"
-                        size="medium"
-                        aria-label="드래그하여 순서 변경"
-                        @click.stop
-                      />
-                    </div>
-                  </template>
-                </ListItem>
-              </template>
-            </SelectBoxGroup>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. Delay 옵션 -->
-      <section v-show="activeTab === 2" class="example-section">
-        <h2>3️⃣ Delay 옵션</h2>
-        <p class="description">
-          • delay: 300ms - 마우스를 누르고 300ms 후에 드래그 시작<br />
-          • 실수로 인한 드래그 방지 (모바일 환경에 유용)<br />
-          💡 누르고 있으면 300ms 후 드래그가 시작됩니다
-        </p>
-        <div class="sc-list sc-select__list">
-          <div class="select-list__group select-list__image">
-            <SelectBoxGroup
-              v-model="delayPickIndex"
-              orientation="vertical"
-              variant="solid"
-              as="div"
-              :items="delayList"
-              ref="delayEl"
-            >
-              <template #contents="{ item }">
-                <ListItem :left="{ mainText: item.main, subText: item.sub }">
-                  <template #leftIcon>
-                    <img
-                      v-if="item.image"
-                      :src="item.image"
-                      alt=""
-                      class="thumb"
-                      @click="onClickItem(item, delayPickIndex)"
-                    />
-                  </template>
-                  <template #rightIcon>
-                    <IconButton
-                      iconName="Menu"
-                      size="medium"
-                      aria-label="드래그하여 순서 변경"
-                      @click.stop
-                    />
-                  </template>
-                </ListItem>
-              </template>
-            </SelectBoxGroup>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. Disabled 옵션 -->
-      <section v-show="activeTab === 3" class="example-section">
-        <h2>4️⃣ Disabled 옵션</h2>
-        <p class="description">
-          • disabled: boolean - 동적으로 정렬 기능 제어<br />
-          💡 아래 체크박스로 정렬 기능을 켜고 끌 수 있습니다
-        </p>
-        <div class="checkbox-container">
-          <label class="checkbox-label">
-            <input type="checkbox" v-model="isDisabled" />
-            정렬 비활성화 (현재: {{ isDisabled ? '비활성' : '활성' }})
-          </label>
-        </div>
-        <div class="sc-list sc-select__list" :class="{ disabled: isDisabled }">
-          <div class="select-list__group select-list__image">
-            <SelectBoxGroup
-              v-model="disabledPickIndex"
-              orientation="vertical"
-              variant="solid"
-              as="div"
-              :items="disabledList"
-              ref="disabledEl"
-            >
-              <template #contents="{ item }">
-                <ListItem :left="{ mainText: item.main, subText: item.sub }">
-                  <template #leftIcon>
-                    <img
-                      v-if="item.image"
-                      :src="item.image"
-                      alt=""
-                      class="thumb"
-                      @click="onClickItem(item, disabledPickIndex)"
-                    />
-                  </template>
-                  <template #rightIcon>
-                    <IconButton
-                      iconName="Menu"
-                      size="medium"
-                      aria-label="드래그하여 순서 변경"
-                      @click.stop
-                    />
-                  </template>
-                </ListItem>
-              </template>
-            </SelectBoxGroup>
-          </div>
-        </div>
-      </section>
-
-      <!-- 5. Filter 옵션 -->
-      <section v-show="activeTab === 4" class="example-section">
-        <h2>5️⃣ Filter 옵션</h2>
-        <p class="description">
-          • filter: '.locked-item' - 특정 클래스를 가진 항목은 드래그 불가<br />
-          • onFilter - 필터링된 항목 클릭 시 이벤트<br />
-          💡 🔒 잠금 표시가 있는 항목은 드래그할 수 없습니다
-        </p>
-        <div class="sc-list sc-select__list">
-          <div class="select-list__group select-list__image">
-            <SelectBoxGroup
-              v-model="filterPickIndex"
-              orientation="vertical"
-              variant="solid"
-              as="div"
-              :items="filterList"
-              ref="filterEl"
-            >
-              <template #contents="{ item }">
-                <ListItem
-                  :left="{ mainText: item.main, subText: item.sub }"
-                  :class="{ 'locked-item': item.locked }"
-                >
-                  <template #leftIcon>
-                    <img
-                      v-if="item.image"
-                      :src="item.image"
-                      alt=""
-                      class="thumb"
-                      :style="{ opacity: item.locked ? 0.5 : 1 }"
-                      @click="onClickItem(item, filterPickIndex)"
-                    />
-                  </template>
-                  <template #rightIcon>
-                    <IconButton
-                      v-if="!item.locked"
-                      iconName="Menu"
-                      size="medium"
-                      aria-label="드래그하여 순서 변경"
-                      @click.stop
-                    />
-                    <IconButton
-                      v-else
-                      iconName="Lock"
-                      size="medium"
-                      aria-label="잠금"
-                      @click.stop
-                    />
-                  </template>
-                </ListItem>
-              </template>
-            </SelectBoxGroup>
-          </div>
-        </div>
-      </section>
-
-      <!-- 6. Group 옵션 -->
-      <section v-show="activeTab === 5" class="example-section">
-        <h2>6️⃣ Group 옵션 - 여러 리스트 간 이동</h2>
-        <p class="description">
-          • group: 'shared' - 같은 그룹끼리 항목 이동 가능<br />
-          • onAdd, onRemove - 항목 추가/제거 이벤트<br />
-          💡 두 그룹 사이에서 항목을 드래그하여 이동할 수 있습니다
-        </p>
-        <div class="group-container">
-          <div class="group-box">
-            <h4>그룹 A ({{ groupList1.length }}개)</h4>
-            <div class="sc-list sc-select__list">
-              <div class="select-list__group select-list__image">
-                <SelectBoxGroup
-                  v-model="groupPickIndex1"
-                  orientation="vertical"
-                  variant="solid"
-                  as="div"
-                  :items="groupList1"
-                  ref="groupEl1"
-                >
-                  <template #contents="{ item }">
-                    <ListItem :left="{ mainText: item.main, subText: item.sub }">
-                      <template #leftIcon>
-                        <img
-                          v-if="item.image"
-                          :src="item.image"
-                          alt=""
-                          class="thumb"
-                          @click="onClickItem(item, groupPickIndex1)"
-                        />
-                      </template>
-                      <template #rightIcon>
-                        <IconButton
-                          iconName="Menu"
-                          size="medium"
-                          aria-label="드래그하여 순서 변경"
-                          @click.stop
-                        />
-                      </template>
-                    </ListItem>
-                  </template>
-                </SelectBoxGroup>
+      return {
+        modelValue,
+        isOpen,
+        pickerValue,
+        options,
+        onClick,
+        changeViewDate,
+        formattedViewDate,
+      };
+    },
+    template: `
+			<div style="width: 360px;max-width:100%;">
+				<ScheduleDatePicker v-model:viewDate="modelValue">
+          <template #header>
+            <div style="width: 100%;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <TextDropdown
+                  size="large"
+                  aria-label="달력 연월 선택"
+                  :value="formattedViewDate"
+                  @click="onClick"
+                />
+                <SegmentSwitch :items="[{iconName: 'calender'},{iconName: 'Menu'}]" size='xsmall' />
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
+                <div>
+                  <span style="color: gray; margin-right: 1rem;">지출</span><span>10,459,000,원</span>
+                </div>
+                <Tooltip content="툴팁입니다." />
               </div>
             </div>
-          </div>
+          </template>
+        </ScheduleDatePicker>
 
-          <div class="group-box">
-            <h4>그룹 B ({{ groupList2.length }}개)</h4>
-            <div class="sc-list sc-select__list">
-              <div class="select-list__group select-list__image">
-                <SelectBoxGroup
-                  v-model="groupPickIndex2"
-                  orientation="vertical"
-                  variant="solid"
-                  as="div"
-                  :items="groupList2"
-                  ref="groupEl2"
-                >
-                  <template #contents="{ item }">
-                    <ListItem :left="{ mainText: item.main, subText: item.sub }">
-                      <template #leftIcon>
-                        <img
-                          v-if="item.image"
-                          :src="item.image"
-                          alt=""
-                          class="thumb"
-                          @click="onClickItem(item, groupPickIndex2)"
-                        />
-                      </template>
-                      <template #rightIcon>
-                        <IconButton
-                          iconName="Menu"
-                          size="medium"
-                          aria-label="드래그하여 순서 변경"
-                          @click.stop
-                        />
-                      </template>
-                    </ListItem>
-                  </template>
-                </SelectBoxGroup>
+        <BottomSheet v-model="isOpen">
+          <WheelPicker
+            :options="options"
+            v-model="pickerValue"
+            :aria-labels="['연도 선택', '월 선택', '일 선택']"
+          />
+          <template #footer>
+            <BoxButton @click="changeViewDate" text="선택" />
+          </template>
+        </BottomSheet>
+			</div>
+		`,
+  }),
+};
+
+export const WithDayContentSlot: Story = {
+  render: () => ({
+    components: {
+      ScheduleDatePicker,
+      BottomSheet,
+      WheelPicker,
+      BoxButton,
+      Icon,
+      BasicCard,
+      Divider,
+    },
+    setup() {
+      const modelValue = ref(new Date("2025-08-01"));
+      const isOpen = ref(false);
+      const pickerValue = ref([]);
+      const options = [
+        Array.from({ length: 7 }, (_, i) => ({ label: i + 2020, value: i + 2020 })),
+        Array.from({ length: 12 }, (_, i) => ({ label: i + 1, value: i + 1 })),
+      ];
+
+      function onClick() {
+        //@ts-ignore
+        pickerValue.value = [modelValue.value.getFullYear(), modelValue.value.getMonth() + 1];
+        isOpen.value = true;
+      }
+
+      function changeViewDate() {
+        modelValue.value = new Date(pickerValue.value.join("-"));
+        isOpen.value = false;
+      }
+
+      const items = [
+        { date: new Date("2025-08-01"), icon: "heart" },
+        { date: new Date("2025-08-02"), icon: "alert" },
+        { date: new Date("2025-08-10"), icon: "edit" },
+      ];
+
+      function getIcon(targetDate: Date) {
+        return items.find(({ date }) => isSameDay(date, targetDate))?.icon;
+      }
+
+      return {
+        modelValue,
+        isOpen,
+        pickerValue,
+        options,
+        items,
+        onClick,
+        changeViewDate,
+        getIcon,
+      };
+    },
+    template: `
+			<div style="width: 355px;max-width:100%;">
+				<ScheduleDatePicker v-model:viewDate="modelValue" @clickHeader="onClick">
+          <template #options>
+            <BasicCard style="margin: 1rem 0;">
+              <div style="display: flex; align-items: center; justify-content: center; color: gray;">
+                <div style="flex: 1; text-align: center;"><span>기록횟수</span><strong style="margin-left: 0.5rem">5회</strong></div>
+                <Divider orientation="vertical" style="height: 15px" />
+                <div style="flex: 1; text-align: center;"><span>평균점수</span><strong style="margin-left: 0.5rem">70점</strong></div>
               </div>
+            </BasicCard>
+          </template>
+          <template #day-content="{day}">
+            <div v-if="getIcon(day.date)" style="display: flex; width: 100%; justify-content: center;">
+              <Icon :name="getIcon(day.date)" />
             </div>
-          </div>
+          </template>
+        </ScheduleDatePicker>
+
+        <BottomSheet v-model="isOpen">
+          <WheelPicker
+            :options="options"
+            v-model="pickerValue"
+            :aria-labels="['연도 선택', '월 선택', '일 선택']"
+          />
+          <template #footer>
+            <BoxButton @click="changeViewDate" text="선택" />
+          </template>
+        </BottomSheet>
+			</div>
+		`,
+  }),
+};
+
+export const Attributes: Story = {
+  render: (args) => ({
+    components: { ScheduleDatePicker },
+    setup() {
+      const today = new Date();
+
+      const samples = [
+        {
+          offset: 1,
+          attribute: {
+            highlight: true,
+            ariaLabel: "기본 highlight",
+          },
+        },
+        {
+          offset: 2,
+          attribute: {
+            dot: true,
+            ariaLabel: "기본 dot",
+          },
+        },
+        {
+          offset: 3,
+          attribute: {
+            dot: "#16a34a",
+            highlight: "#dcfce7",
+            ariaLabel: "hex 컬러",
+          },
+        },
+        {
+          offset: 4,
+          attribute: {
+            highlight: true,
+            dot: true,
+            class: "story-datepicker-attribute--warning",
+            ariaLabel: "custom class",
+          },
+        },
+        {
+          offset: 5,
+          attribute: {
+            highlight: "var(--brand-100)",
+            dot: "var(--bg-red-same)",
+            ariaLabel: "CSS 변수",
+          },
+        },
+      ].map((sample) => {
+        const date = addDays(today, sample.offset);
+        return {
+          ...sample,
+          date,
+          key: format(date, "yyyy-MM-dd"),
+        };
+      });
+
+      const attributes = ref<Record<string, any>>(
+        samples.reduce((acc, cur) => ({ ...acc, [cur.key]: cur.attribute }), {})
+      );
+
+      const viewDate = ref(today);
+
+      return { args, attributes, samples, viewDate };
+    },
+    template: `
+			<div style="width: 360px;max-width:100%;">
+        <ScheduleDatePicker
+          v-bind="args"
+          :attributes="attributes"
+        />
+        <div class="story-datepicker-attributes-legend">
+          <ul>
+            <li v-for="sample in samples" :key="sample.key">
+              <strong>{{ sample.key }}</strong> {{ sample.attribute }}
+            </li>
+          </ul>
         </div>
-      </section>
-
-      <!-- 7. 가로 정렬 -->
-      <section v-show="activeTab === 6" class="example-section">
-        <h2>7️⃣ Direction 옵션 - 가로 정렬</h2>
-        <p class="description">
-          • direction: 'horizontal' - 가로 방향 정렬<br />
-          • 기본값은 'vertical' (세로)<br />
-          💡 가로로 배치된 항목들을 드래그하여 순서를 변경할 수 있습니다
-        </p>
-        <div class="horizontal-container" ref="horizontalEl">
-          <div
-            v-for="item in horizontalList"
-            :key="item.value"
-            class="horizontal-item"
-            @click="onClickItem(item, horizontalPickIndex)"
-          >
-            <img
-              v-if="item.image"
-              :src="item.image"
-              alt=""
-              class="horizontal-thumb"
-            />
-            <div class="horizontal-label">{{ item.main }}</div>
-            <div class="drag-indicator">☰</div>
-          </div>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <BottomActionContainer :scrollDim="true">
-    <BoxButtonGroup size="xlarge">
-      <BoxButton text="완료" @click="addLog('완료 버튼 클릭')" />
-    </BoxButtonGroup>
-  </BottomActionContainer>
-</template>
-
-<style lang="scss" scoped>
-.sortable-examples {
-  padding: 20px;
-  padding-bottom: 100px;
-}
-
-// 이벤트 로그
-.log-section {
-  background: #f8f9fa;
-  border: 2px solid #dee2e6;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-
-  .log-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-
-    h3 {
-      margin: 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-  }
-
-  .log-content {
-    max-height: 150px;
-    overflow-y: auto;
-    background: white;
-    border-radius: 4px;
-    padding: 10px;
-
-    .log-empty {
-      color: #6c757d;
-      font-style: italic;
-      text-align: center;
-      padding: 20px;
-      font-size: 0.9rem;
-    }
-
-    .log-item {
-      padding: 6px 8px;
-      border-bottom: 1px solid #e9ecef;
-      font-size: 0.85rem;
-      color: #495057;
-      font-family: monospace;
-
-      &:last-child {
-        border-bottom: none;
-      }
-    }
-  }
-}
-
-// 탭 네비게이션
-.tab-navigation {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 5px;
-
-  .tab-button {
-    padding: 10px 20px;
-    background: white;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    white-space: nowrap;
-
-    &:hover {
-      border-color: #007bff;
-      background: #f8f9fa;
-    }
-
-    &.active {
-      background: #007bff;
-      color: white;
-      border-color: #007bff;
-    }
-  }
-}
-
-// 예제 섹션
-.example-section {
-  background: white;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 20px;
-
-  h2 {
-    font-size: 1.3rem;
-    margin: 0 0 12px 0;
-    color: #333;
-  }
-
-  .description {
-    color: #6c757d;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    margin-bottom: 20px;
-    background: #f8f9fa;
-    padding: 12px;
-    border-radius: 4px;
-    border-left: 4px solid #007bff;
-  }
-}
-
-// 체크박스
-.checkbox-container {
-  margin-bottom: 15px;
-
-  .checkbox-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    color: #495057;
-    font-size: 0.95rem;
-
-    input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-    }
-  }
-}
-
-// 비활성화 상태
-.sc-list.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-// 잠긴 항목
-.locked-item {
-  opacity: 0.7;
-  cursor: not-allowed !important;
-}
-
-// 그룹 컨테이너
-.group-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-
-  .group-box {
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    overflow: hidden;
-
-    h4 {
-      margin: 0;
-      padding: 12px;
-      background: #007bff;
-      color: white;
-      text-align: center;
-      font-size: 1rem;
-    }
-
-    .sc-list {
-      min-height: 200px;
-    }
-  }
-}
-
-// 드래그 핸들 스타일
-.drag-handle {
-  &:active {
-    cursor: grabbing !important;
-  }
-}
-
-// 가로 정렬 컨테이너
-.horizontal-container {
-  display: flex;
-  gap: 15px;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  overflow-x: auto;
-  min-height: 150px;
-  align-items: flex-start;
-
-  .horizontal-item {
-    flex: 0 0 auto;
-    width: 100px;
-    background: white;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    padding: 10px;
-    text-align: center;
-    cursor: move;
-    transition: all 0.2s;
-    position: relative;
-
-    &:hover {
-      border-color: #007bff;
-      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
-    }
-
-    .horizontal-thumb {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border-radius: 6px;
-      margin-bottom: 8px;
-    }
-
-    .horizontal-label {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 8px;
-    }
-
-    .drag-indicator {
-      font-size: 1.2rem;
-      color: #6c757d;
-      cursor: grab;
-
-      &:active {
-        cursor: grabbing;
-      }
-    }
-  }
-}
-
-// 드래그 중 스타일
-:deep(.sortable-ghost) {
-  opacity: 0.4;
-}
-
-:deep(.sortable-drag) {
-  opacity: 0.9;
-}
-</style>
+      </div>
+    `,
+  }),
+};
