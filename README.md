@@ -46,7 +46,47 @@ export function useTabSwipe(
     return el;
   });
 
-  // 패널 컨테이너의 스타일 업데이트
+  // 패널 컨테이너 및 패널들의 스타일 초기화
+  const initializePanelsStyle = () => {
+    const panelsContainer = swipeTargetRef.value;
+    if (!panelsContainer) return;
+
+    const panels = panelsContainer.querySelectorAll('.sv-tabs__panel');
+    if (panels.length === 0) return;
+
+    // 컨테이너 스타일 설정
+    panelsContainer.style.position = 'relative';
+    panelsContainer.style.overflow = 'hidden';
+
+    // 각 패널에 기본 스타일과 인덱스 설정
+    panels.forEach((panel: Element, index: number) => {
+      const htmlPanel = panel as HTMLElement;
+      
+      // 기본 스타일 설정
+      htmlPanel.style.display = 'block';
+      htmlPanel.style.width = '100%';
+      htmlPanel.style.top = '0';
+      htmlPanel.style.left = '0';
+      htmlPanel.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+      
+      // CSS 변수로 패널 인덱스 설정
+      htmlPanel.style.setProperty('--panel-index', index.toString());
+      
+      // active 패널 여부에 따라 스타일 설정
+      const isActive = htmlPanel.classList.contains('sv-tabs__panel--active');
+      if (isActive) {
+        htmlPanel.style.position = 'relative';
+        htmlPanel.style.pointerEvents = 'auto';
+      } else {
+        htmlPanel.style.position = 'absolute';
+        htmlPanel.style.pointerEvents = 'none';
+      }
+    });
+
+    console.log(`🎨 Initialized ${panels.length} panels`);
+  };
+
+  // 패널 스타일 업데이트 (스와이프 중 또는 탭 변경 시)
   const updatePanelsStyle = (offset: number, transitioning: boolean) => {
     const panelsContainer = swipeTargetRef.value;
     if (!panelsContainer) {
@@ -55,39 +95,43 @@ export function useTabSwipe(
     }
 
     const panels = panelsContainer.querySelectorAll('.sv-tabs__panel');
-    
     if (panels.length === 0) {
       console.warn("⚠️ No .sv-tabs__panel elements found");
       return;
     }
 
-    console.log(`📱 Updating ${panels.length} panels, offset: ${offset}, transitioning: ${transitioning}`);
+    // 컨테이너에 active 탭 인덱스와 오프셋 설정
+    const offsetPercent = offset / (panelsContainer.offsetWidth || 1) * 100;
+    panelsContainer.style.setProperty('--active-tab-index', activeTabRef.value.toString());
+    panelsContainer.style.setProperty('--swipe-offset', `${offsetPercent}%`);
+
+    console.log(`📱 Updating panels - active: ${activeTabRef.value}, offset: ${offsetPercent.toFixed(2)}%`);
     
     panels.forEach((panel: Element, index: number) => {
       const htmlPanel = panel as HTMLElement;
       
-      // 모든 패널을 보이게 설정 (display: none 오버라이드)
-      htmlPanel.style.display = 'block';
-      htmlPanel.style.position = 'absolute';
-      htmlPanel.style.top = '0';
-      htmlPanel.style.left = '0';
-      htmlPanel.style.width = '100%';
-      
-      // transform 계산
-      const baseTransform = (index - activeTabRef.value) * 100;
-      const offsetPercent = (offset / panelsContainer.offsetWidth) * 100;
-      
+      // transition 설정
       if (transitioning) {
         htmlPanel.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
       } else {
         htmlPanel.style.transition = 'none';
       }
       
-      htmlPanel.style.transform = `translateX(${baseTransform + offsetPercent}%)`;
+      // transform 계산
+      const baseTransform = (index - activeTabRef.value) * 100;
+      const finalTransform = baseTransform + offsetPercent;
+      htmlPanel.style.transform = `translateX(${finalTransform}%)`;
+      
+      // active 상태에 따라 position과 pointer-events 변경
+      const isActive = index === activeTabRef.value && offset === 0;
+      if (isActive) {
+        htmlPanel.style.position = 'relative';
+        htmlPanel.style.pointerEvents = 'auto';
+      } else {
+        htmlPanel.style.position = 'absolute';
+        htmlPanel.style.pointerEvents = 'none';
+      }
     });
-    
-    // 컨테이너는 relative positioning
-    panelsContainer.style.position = 'relative';
   };
 
   usePointerSwipe(swipeTargetRef, {
@@ -147,10 +191,11 @@ export function useTabSwipe(
     if (el) {
       const panels = el.querySelectorAll('.sv-tabs__panel');
       if (panels.length > 0) {
-        console.log(`🎨 Initial setup for ${panels.length} panels`);
+        console.log(`🔧 Setting up ${panels.length} panels`);
+        initializePanelsStyle();
         updatePanelsStyle(0, false);
       }
-    }
+    }-
   });
 
   // activeTabRef가 변경될 때 transition과 함께 이동
