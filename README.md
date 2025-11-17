@@ -1,5 +1,5 @@
 import { usePointerSwipe, type UseSwipeDirection } from "@vueuse/core";
-import { computed, watchEffect, type Ref } from "vue";
+import { computed, ref, watch, watchEffect, type Ref } from "vue";
 
 /**
  * @name useTabSwipe
@@ -15,16 +15,19 @@ export function useTabSwipe(
   tabCount: number,
   threshold: number = 50
 ) {
+  const swipeOffset = ref(0);
+  const isSwiping = ref(false);
+  const startX = ref(0);
+
   const navigateToNextTab = (): void => {
     if (activeTabRef.value < tabCount - 1) {
       activeTabRef.value += 1;
-      // console.log(activeTabRef.value);
     }
   };
+
   const navigateToPrevTab = (): void => {
     if (activeTabRef.value > 0) {
       activeTabRef.value -= 1;
-      // console.log(activeTabRef.value);
     }
   };
 
@@ -33,143 +36,135 @@ export function useTabSwipe(
     if (!element) return undefined;
 
     const el = (element as any).$el || element;
-
     const panelsElement = el.querySelector?.(".sv-tabs__panels");
+    
     if (panelsElement) {
-      // console.log("Found panels for swipe");
+      console.log("✅ Found .sv-tabs__panels for swipe");
       return panelsElement as HTMLElement;
     }
+    console.log("⚠️ Using original element for swipe");
     return el;
   });
+
+  // 패널 컨테이너의 스타일 업데이트
+  const updatePanelsStyle = (offset: number, transitioning: boolean) => {
+    const panelsContainer = swipeTargetRef.value;
+    if (!panelsContainer) {
+      console.warn("⚠️ No panels container found");
+      return;
+    }
+
+    const panels = panelsContainer.querySelectorAll('.sv-tabs__panel');
+    
+    if (panels.length === 0) {
+      console.warn("⚠️ No .sv-tabs__panel elements found");
+      return;
+    }
+
+    console.log(`📱 Updating ${panels.length} panels, offset: ${offset}, transitioning: ${transitioning}`);
+    
+    panels.forEach((panel: Element, index: number) => {
+      const htmlPanel = panel as HTMLElement;
+      
+      // 모든 패널을 보이게 설정 (display: none 오버라이드)
+      htmlPanel.style.display = 'block';
+      htmlPanel.style.position = 'absolute';
+      htmlPanel.style.top = '0';
+      htmlPanel.style.left = '0';
+      htmlPanel.style.width = '100%';
+      
+      // transform 계산
+      const baseTransform = (index - activeTabRef.value) * 100;
+      const offsetPercent = (offset / panelsContainer.offsetWidth) * 100;
+      
+      if (transitioning) {
+        htmlPanel.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+      } else {
+        htmlPanel.style.transition = 'none';
+      }
+      
+      htmlPanel.style.transform = `translateX(${baseTransform + offsetPercent}%)`;
+    });
+    
+    // 컨테이너는 relative positioning
+    panelsContainer.style.position = 'relative';
+  };
+
   usePointerSwipe(swipeTargetRef, {
     threshold,
+    onSwipeStart(_e: PointerEvent) {
+      isSwiping.value = true;
+      startX.value = _e.clientX;
+      swipeOffset.value = 0;
+    },
+    onSwipe(_e: PointerEvent) {
+      if (!isSwiping.value) return;
+      
+      const distanceX = _e.clientX - startX.value;
+      
+      // 첫 탭에서 오른쪽으로, 마지막 탭에서 왼쪽으로 스와이프 시 저항 적용
+      const isFirstTab = activeTabRef.value === 0;
+      const isLastTab = activeTabRef.value === tabCount - 1;
+      
+      if ((isFirstTab && distanceX > 0) || (isLastTab && distanceX < 0)) {
+        // 끝에서의 저항 효과 (30% 감소)
+        swipeOffset.value = distanceX * 0.3;
+      } else {
+        swipeOffset.value = distanceX;
+      }
+      
+      // 스와이프 중 실시간 업데이트 (transition 없음)
+      updatePanelsStyle(swipeOffset.value, false);
+    },
     onSwipeEnd(_e: PointerEvent, direction: UseSwipeDirection) {
-      if (direction === "left") {
+      isSwiping.value = false;
+      const finalOffset = swipeOffset.value;
+      swipeOffset.value = 0;
+
+      if (direction === "left" && activeTabRef.value < tabCount - 1) {
         navigateToNextTab();
-      } else if (direction === "right") {
+      } else if (direction === "right" && activeTabRef.value > 0) {
         navigateToPrevTab();
+      } else {
+        // 스와이프가 threshold에 도달하지 못한 경우 원위치로 복귀
+        updatePanelsStyle(0, true);
       }
     },
-    onSwipe(_e: PointerEvent) {},
   });
 
+  // touch-action을 pan-y로 설정하여 세로 스크롤은 허용하고 가로 스와이프만 감지
   watchEffect(() => {
     const el = swipeTargetRef.value;
     if (el) {
       el.style.touchAction = "pan-y";
+      console.log("✅ Set touch-action: pan-y");
     }
   });
 
-  return { navigateToNextTab, navigateToPrevTab };
+  // 초기 스타일 설정 및 패널 구조 확인
+  watchEffect(() => {
+    const el = swipeTargetRef.value;
+    if (el) {
+      const panels = el.querySelectorAll('.sv-tabs__panel');
+      if (panels.length > 0) {
+        console.log(`🎨 Initial setup for ${panels.length} panels`);
+        updatePanelsStyle(0, false);
+      }
+    }
+  });
+
+  // activeTabRef가 변경될 때 transition과 함께 이동
+  watch(activeTabRef, () => {
+    if (!isSwiping.value) {
+      console.log(`🔄 Tab changed to ${activeTabRef.value}`);
+      updatePanelsStyle(0, true);
+    }
+  });
+
+  return { 
+    navigateToNextTab, 
+    navigateToPrevTab,
+    swipeOffset,
+    isSwiping 
+  };
 }
-
-
-<route lang="yaml">
-meta:
-  id: SBT011A01
-  title: 반갑꾸러미
-  menu: "혜택: 투데이 Tab > 멤버십·리워드​ > 반갑 꾸러미"
-  layout: SubLayout
-  category: 혜택
-  publish: 김대민
-  publishVersion: 0.8
-  status: 재작업
-  etc:
-    "tabpanel 내용 호출해서
-    사용\n매일결제-SBT011A01-daily\n처음결제-SBT011A01-first\n매달결제-SBT011A01-monthly\n251105:
-    ScIcon > ScImageIcon 으로 변경\n251105: 이미지용량 문제로 svg 아이콘 .png로 변경 후 경로수정"
-  header:
-    variant: sub
-    fixed: true
-    back: true
-    close: true
-</route>
-<template>
-  <div class="sc-contents__body welcome-lounge">
-    <Tabs
-      v-model="selectedTab"
-      ref="contentRef"
-      panels-class="welcome-panels"
-      :panels-style="panelsInlineStyle"
-    >
-      <!-- <Tab>매일결제</Tab>
-        <Tab>처음결제</Tab>
-        <Tab>매달결제</Tab> -->
-      <Tab
-        v-for="(t, index) in TabsLine"
-        :key="index"
-        :label="t.label"
-      >
-        {{ t.label }}
-      </Tab>
-
-      <TabPanel
-        v-for="(panel, index) in panelComponents"
-        :key="panel.key"
-        :style="getPanelStyle(index)"
-        :aria-hidden="selectedTab !== index"
-      >
-        <component :is="panel.component" />
-      </TabPanel>
-    </Tabs>
-  </div>
-</template>
-
-<script setup>
-import { useTabSwipe } from "@shc-nss/shared/utils";
-import { Tab, TabPanel, Tabs } from "@shc-nss/ui/solid";
-import { computed, ref } from "vue";
-import SBT011A01Daily from "./section/SBT011A01-daily.vue";
-import SBT011A01First from "./section/SBT011A01-first.vue";
-import SBT011A01Monthly from "./section/SBT011A01-monthly.vue";
-
-const selectedTab = ref(0);
-
-const TabsLine = [{ label: "매일결제" }, { label: "처음결제" }, { label: "매달결제" }];
-const panelComponents = [
-  { key: "daily", component: SBT011A01Daily },
-  { key: "first", component: SBT011A01First },
-  { key: "monthly", component: SBT011A01Monthly },
-];
-// 콘텐츠 영역에 스와이프 기능 추가 (마우스 + 터치 지원)
-// const contentRef = ref<HTMLElement>();
-const contentRef = ref(null);
-
-const { navigateToNextTab, navigateToPrevTab } = useTabSwipe(
-  contentRef,
-  selectedTab,
-  TabsLine.length,
-  50
-);
-
-const panelsInlineStyle = computed(() => ({
-  "--active-tab-index": `${selectedTab.value}`,
-}));
-
-const getPanelStyle = (index) => ({
-  "--panel-index": `${index}`,
-});
-</script>
-
-<style scoped lang="scss">
-:deep(.welcome-panels) {
-  position: relative;
-  overflow: hidden;
-}
-
-:deep(.welcome-panels .sv-tabs__panel) {
-  display: block !important;
-  width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  transition: transform 0.35s ease;
-  transform: translateX(calc((var(--panel-index, 0) - var(--active-tab-index, 0)) * 100%));
-  pointer-events: none;
-}
-
-:deep(.welcome-panels .sv-tabs__panel--active) {
-  position: relative;
-  pointer-events: auto;
-}
-</style>
